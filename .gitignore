@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# ignore smoke_dispersion file
+smoke_dispersion/
+smoke_dispersion.kmz
+
+*.Rproj
