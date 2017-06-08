@@ -7,24 +7,28 @@
 
 # load libraries
 library(leaflet)
-# need maptools to open bluesky kmz files
-library(maptools)
-library(rgdal)
+# need ncdf4 package (maybe)
+library(ncdf4)
+# need raster package
+library(raster)
 
+# color pallet
 
-# read in test kmz file of US smoke forecasts (downloaded on 5/31/2017) --------
-smoke <- readOGR("./smoke_dispersion/doc.kml")
-plot(smoke)
-str(smoke)
+# add smoke raster brick 
+# can read the netcdf file right in to a raster brick from netcdf
+# read net cdf file of forecasts from 06/08/2017
+smk_brick <- brick("./smoke_dispersion.nc")
 
-?getKMLcoordinates()
-# create base map of western US
+smk_brick@crs
 
 west_us <- leaflet() %>% 
   # call map layer
   addTiles() %>% 
   # set bounds of map
-  fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25)
+  fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
+  # add brick
+  addRasterImage(smk_brick[[180]], opacity = 0.8) 
+
 
 west_us
 
