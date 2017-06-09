@@ -17,9 +17,16 @@ library(raster)
 # add smoke raster brick 
 # can read the netcdf file right in to a raster brick from netcdf
 # read net cdf file of forecasts from 06/08/2017
-smk_brick <- brick("./smoke_dispersion.nc")
+smk_brick <- brick("./smoke_dispersion_v2.nc")
 
-smk_brick@crs
+# subsetting to work with one raster
+r <- smk_brick[[180]]
+
+# define color gradient for layer
+pal <- colorNumeric(c("#F0F2F0", "#000c40"), domain = c(0,100), 
+                    na.color = "transparent")
+
+crs(r)
 
 west_us <- leaflet() %>% 
   # call map layer
@@ -27,9 +34,12 @@ west_us <- leaflet() %>%
   # set bounds of map
   fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
   # add brick
-  addRasterImage(smk_brick[[180]], opacity = 0.8) 
+  addRasterImage(r, colors = pal, opacity = 0.5, project = F) %>%  
+  addLegend(pal=pal, values=values(r), title = "Smoke ug/m^3")
+
 
 
 west_us
+
 
 
