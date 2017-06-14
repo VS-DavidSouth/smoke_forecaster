@@ -34,7 +34,7 @@ west_us <- leaflet() %>%
   # set bounds of map
   fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
   # add brick
-  addRasterImage(r, colors = pal, opacity = 0.5, project = F) %>%  
+  addRasterImage(r, colors = pal, opacity = 0.5, project = T) %>%  
   addLegend(pal=pal, values=values(r), title = "Smoke ug/m^3")
 
 
