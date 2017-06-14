@@ -8,38 +8,52 @@ pal <- colorNumeric(c("#F0F2F0", "#000c40"), domain = c(0,600),
                     na.color = "transparent")
 
 # read net cdf file of forecasts from 06/08/2017
-smk_brick <- brick("./smoke_dispersion_v2.nc")
+smk_brick <- stack("./smoke_dispersion_v2.nc")
 
-r <- smk_brick[[1]]
-length(smk_brick@data@names)
+r_test <- smk_brick[[180]]
+
+# smaller brick
+small_brick <- smk_brick[[1:10]]
 
 
 ui <- fluidPage(
   leafletOutput("map"),
-  sliderInput("range", "Date", min =0, max = length(smk_brick@data@names),
-              value = 0, step = 1)
+  sliderInput(inputId = "time", 
+              label = "Date", 
+              min =1, max = 10,
+              value = 1, step = 1)
 )
 
 server <- function(input, output, session) {
   
   # add base leaflet map
   output$map <- renderLeaflet({
-    leaflet() %>% 
+   map <-  leaflet() %>% 
       # call map layer
       addTiles() %>% 
       # set bounds of map
-       fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) 
+      fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) 
+  map  
+    
   }) #
   
   # add interactive raster brick
-  observe({
-    # reactive raster brick
-    r <- smk_brick[[input$range]]
+  observeEvent(input$time,{
     
-    proxy <- leafletProxy("map") %>% 
-      addRasterImage(r, colors = pal, opacity = 0.5, project = F) # %>%  
+    # reactive raster brick
+    print(input$time %in% names(small_brick))
+    
+    time_index_string <- paste0("X", input$time)
+    index <- as.numeric(input$time)
+    r <- reactive({small_brick[[index]]})
+    #r <- raster(xmn=-2.8, xmx=-2.79, ymn=54.04, ymx=54.05, nrows=30, ncols=30) 
+    
+    leafletProxy(mapId="map") %>%
+      clearImages() %>%
+     
+      addRasterImage(r_test, colors = pal, opacity = 0.5, project = T) #%>%
       #addLegend(pal=pal, values=r, title = "Smoke ug/m^3")
-  
+    
     })
 }
 
