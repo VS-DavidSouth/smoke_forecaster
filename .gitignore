@@ -9,3 +9,6 @@
 *.Rproj
 
 smoke_dispersion/
+
+# ignore rsconnect folder
+rsconnect/
