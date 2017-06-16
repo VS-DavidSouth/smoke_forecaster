@@ -29,16 +29,26 @@ max_pm <- max(summary(smk_brick)[5,])
 pal <- colorNumeric(c("#F0F2F0", "#000c40"), domain = c(0,160),
                     na.color = "transparent")
 
-# convert date a time
-smk_brick
+# convert character names to numeric
+date_time <- as.numeric(substring(smk_brick@data@names, 2))
+# now assign date time stamp
+date_time <- as.POSIXct(date_time, origin="1970-1-1", tz="GMT")
+# minimum date
+min_date <- min(date_time)
+max_date <- max(date_time)
 
 # set up shiny layout
-ui <- fluidPage(
-  leafletOutput("map"),
-  sliderInput(inputId = "time", 
-    label = "Date:Time", min =1, max = 192, value = 0, step = 1,
-    animate = animationOptions(interval=200, loop=T))
-)
+ui <- bootstrapPage(
+  tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
+  # initialize map
+  leafletOutput("map", width = "100%", height="100%"),
+  # add slider
+  absolutePanel(top = 10, right = 20,
+    sliderInput(inputId = "time", label = "Date & Time", min = min_date, 
+      max = max_date, value = min_date, step = 3600, 
+      timeFormat = "%F %T", timezone = "GMT", 
+      animate = animationOptions(interval=200, loop=T))
+    )) #end boot page
 
 # server section that will eventually go in it's own script
 server <- function(input, output, session) {
@@ -50,17 +60,22 @@ server <- function(input, output, session) {
     addTiles() %>% 
     # set bounds of map
     fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
-    addLegend(pal=pal, values=c(0,max_pm), title = "Smoke ug/m^3")
+    addLegend(pal=pal, values=c(0,max_pm), title = "Smoke ug/m^3",
+              position = "bottomright")
     
   }) #
   
   # add interactive raster layer
   observeEvent(input$time,{
+    return(input$time)
     
-    time_index_string <- paste0("X", input$time)
-    index <- as.numeric(input$time)
-    r <- reactive({smk_brick[[index]]})
-    
+   
+    r <- reactive(
+       index <- as.numeric((input$time - min_date)/3600)
+      {smk_brick[[index]]}
+      )
+
+    # call proxy map
     leafletProxy(mapId="map") %>%
       clearImages() %>%
       addRasterImage(r(), colors = pal, opacity = 0.7, project = F) 
