@@ -20,7 +20,8 @@ smk_brick <- calc(smk_brick, fun=function(x){
   x[x < 5] <- NA; return(x)
 })
 
-smk_brick@legend
+smk_brick@data@names
+
 # find the max range
 max_pm <- max(summary(smk_brick)[5,])
 
