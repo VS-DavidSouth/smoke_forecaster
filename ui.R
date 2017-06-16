@@ -26,7 +26,5 @@ ui <- bootstrapPage(
     )) #end boot page
 
 
-shinyApp(ui, server)
-
 
 
