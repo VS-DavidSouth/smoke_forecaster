@@ -37,6 +37,14 @@ date_time <- as.POSIXct(date_time, origin="1970-1-1", tz="GMT")
 min_date <- min(date_time)
 max_date <- max(date_time)
 
+date_time
+
+as.numeric((date_time[26] - date_time[1])+1)
+((as.numeric(date_time[192]) - as.numeric(date_time[1]))/3600)+1
+
+date_time[25]
+date_time[1]
+
 # set up shiny layout
 ui <- bootstrapPage(
   tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
@@ -52,7 +60,7 @@ ui <- bootstrapPage(
 
 # server section that will eventually go in it's own script
 server <- function(input, output, session) {
-  
+
   # add base leaflet map
   output$map <- renderLeaflet({
     leaflet() %>% 
@@ -67,14 +75,13 @@ server <- function(input, output, session) {
   
   # add interactive raster layer
   observeEvent(input$time,{
-    return(input$time)
+  
+    # numeric index for subsetting smoke brick
+    index <- ((as.numeric(input$time) - as.numeric(min_date))/3600)+1
     
+    # reactive raster layer
+    r <- reactive({smk_brick[[index]]})
    
-    r <- reactive(
-       index <- as.numeric((input$time - min_date)/3600)
-      {smk_brick[[index]]}
-      )
-
     # call proxy map
     leafletProxy(mapId="map") %>%
       clearImages() %>%
