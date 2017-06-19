@@ -10,7 +10,37 @@ library(shiny)
 library(leaflet)
 library(raster)
 
+# setup ------------------------------------------------------------------------
+# not sure if setup needs to be both in UI and server or if it's saved
+# in local enviroment
+# read net cdf file of forecasts from 06/08/2017 ----
+# brick or stack works
+smk_brick <- brick("./smoke_dispersion_v2.nc")
 
+# set projection
+crs(smk_brick)
+
+
+# set upper bound to 160 and anything lower to NA for nicer raster presentation
+smk_brick <- calc(smk_brick, fun=function(x){
+  x[x > 160] <- 160;
+  x[x < 5] <- NA; return(x)
+})
+
+# find the max range
+max_pm <- max(summary(smk_brick)[5,])
+
+# define color gradient for layer ----
+pal <- colorNumeric(c("#F0F2F0", "#000c40"), domain = c(0,160),
+                    na.color = "transparent")
+
+# convert character names to numeric
+date_time <- as.numeric(substring(smk_brick@data@names, 2))
+# now assign date time stamp
+date_time <- as.POSIXct(date_time, origin="1970-1-1", tz="GMT")
+# minimum date
+min_date <- min(date_time)
+max_date <- max(date_time)
 
 # set up shiny layout
 ui <- bootstrapPage(
