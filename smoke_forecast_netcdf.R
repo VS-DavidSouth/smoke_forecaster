@@ -92,6 +92,7 @@ bs2v2 <- function(fileName) {
 # Now run this function on the file we just downloaded
 bs2v2("./smoke_dispersion.nc")
 list.files(pattern='*.nc')
+# close original file
 nc_close("./smoke_dispersion.nc")
 
 smoke_forecast <- nc_open("./smoke_dispersion_v2.nc")
