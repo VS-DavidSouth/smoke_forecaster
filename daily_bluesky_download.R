@@ -128,4 +128,4 @@ bs2v2 <- function(fileName) {
 bs2v2(fileName)
 list.files(pattern='*.nc')
 
-nc_close("smoke_dispersion_v2.nc")
+crs(smk_brick)
