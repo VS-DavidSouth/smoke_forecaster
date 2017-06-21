@@ -11,7 +11,7 @@ library(leaflet)
 library(raster)
 
 # server section that will eventually go in it's own script
-shinyServer(server <- function(input, output, session){
+shinyServer(function(input, output, session){
   
   # add base leaflet map
   output$map <- renderLeaflet({
