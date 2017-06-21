@@ -46,7 +46,7 @@ min_date <- min(date_time)
 max_date <- max(date_time)
 
 # set up shiny layout
-ui <- bootstrapPage(
+shinyUI(bootstrapPage(
   tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
   # initialize map
   leafletOutput("map", width = "100%", height="100%"),
@@ -57,7 +57,7 @@ ui <- bootstrapPage(
       timeFormat = "%F %T", timezone = "GMT", 
       animate = animationOptions(interval=200, loop=T))
     )) #end boot page
-
+) # end UI function
 
 
 

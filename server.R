@@ -11,7 +11,7 @@ library(leaflet)
 library(raster)
 
 # server section that will eventually go in it's own script
-server <- function(input, output, session) {
+shinyServer(server <- function(input, output, session){
   
   # add base leaflet map
   output$map <- renderLeaflet({
@@ -40,4 +40,4 @@ server <- function(input, output, session) {
       addRasterImage(r(), colors = pal, opacity = 0.7, project = T) 
 
   })
-}
+})
