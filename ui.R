@@ -9,6 +9,7 @@
 library(shiny)
 library(leaflet)
 library(raster)
+library(ncdf4)
 
 # setup ------------------------------------------------------------------------
 # not sure if setup needs to be both in UI and server or if it's saved
@@ -18,10 +19,10 @@ library(raster)
 # define direct path to file
 nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
 # brick or stack works
-smk_brick <- brick(nc_path)
+smk_brick1 <- brick(nc_path)
 
-# set projection
-#crs(smk_brick)
+# testing to see if it's a size of raster brick issue
+smk_brick <- smk_brick1[[1:10]]
 
 
 # set upper bound to 160 and anything lower to NA for nicer raster presentation
@@ -29,6 +30,8 @@ smk_brick <- calc(smk_brick, fun=function(x){
   x[x > 160] <- 160;
   x[x < 5] <- NA; return(x)
 })
+
+rast <- smk_brick[[1]]
 
 # find the max range
 max_pm <- max(summary(smk_brick)[5,])
