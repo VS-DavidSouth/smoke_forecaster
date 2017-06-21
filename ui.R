@@ -14,11 +14,14 @@ library(raster)
 # not sure if setup needs to be both in UI and server or if it's saved
 # in local enviroment
 # read net cdf file of forecasts from 06/08/2017 ----
+
+# define direct path to file
+nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
 # brick or stack works
-smk_brick <- brick("./smoke_dispersion_v2.nc")
+smk_brick <- brick(nc_path)
 
 # set projection
-crs(smk_brick)
+#crs(smk_brick)
 
 
 # set upper bound to 160 and anything lower to NA for nicer raster presentation

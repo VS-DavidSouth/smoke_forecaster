@@ -10,8 +10,6 @@ library(shiny)
 library(leaflet)
 library(raster)
 
-
-
 # server section that will eventually go in it's own script
 server <- function(input, output, session) {
   
