@@ -9,42 +9,26 @@
 # http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.
 # html#downloadbsoutput\
 
-# function to download bluesky daily output ------------------------------------
+# libraries needed
+library(ncdf4)
+library(stringr)
 
-# define function
-downloadBSOutput <- function(model, date) {
-  
-  # Build the URL
-  URLBase <- "http://smoke.airfire.org/bluesky-daily/output/standard"
-  fileURL <- paste0(URLBase, "/", model, "/", date, 
-                    "/forecast/data/smoke_dispersion.nc")
-  
-  # Create a generic file name to overwrite previous day file to save space
-  fileName <- paste0("smoke_dispersion.nc")
-  
-  # Download the data to your working directory; wb needs to be in argument
-  # to download netcdf correctly
-  download.file(url=fileURL, destfile=fileName, mode = "wb")
-  
-  # return file name
-  return(fileName)
+# download bluesky daily output -----------------------------------------------
 
-}
-
-
-# define bluesky output I want (I think I want the GFS-0.15deg)
-model_name <- "GFS-0.15deg"
 # date is needed for download; taking out "-" separator; adding 00 to get first
 # run of the day (just in case there are two)
 todays_date <- paste0(gsub("-","", Sys.Date()), "00")
 
+# define URL path
+url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/GFS-0.15deg/",
+	todays_date, "/forecast/data/smoke_dispersion.nc")
+
 # Download a netcdf file to work with
-fileName <- downloadBSOutput(model = model_name, date = todays_date)
+download.file(url = url_path, destfile = "smoke_dispersion.nc", mode = "wb")
+
+fileName <- "smoke_dispersion.nc"
 
 # netcdf file manipulaton ------------------------------------------------------
-library(stringr)
-library(ncdf4)
-
 nc <- nc_open(fileName)
 
 bs2v2 <- function(fileName) {
@@ -128,4 +112,4 @@ bs2v2 <- function(fileName) {
 bs2v2(fileName)
 list.files(pattern='*.nc')
 
-crs(smk_brick)
+
