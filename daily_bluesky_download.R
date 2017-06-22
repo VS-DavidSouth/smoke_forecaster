@@ -20,8 +20,8 @@ library(stringr)
 todays_date <- paste0(gsub("-","", Sys.Date()), "00")
 
 # define URL path
-url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/GFS-0.15deg/",
-	todays_date, "/forecast/data/smoke_dispersion.nc")
+url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
+  "GFS-0.15deg/", todays_date, "/forecast/data/smoke_dispersion.nc")
 
 # Download a netcdf file to work with
 download.file(url = url_path, destfile = "smoke_dispersion.nc", mode = "wb")
