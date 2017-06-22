@@ -94,7 +94,8 @@ bs2v2 <- function(fileName) {
   timeDim <- ncdim_def("time", "seconds from 1970-1-1", numericTime)  
   
   # Define variables
-  pm25Var <- ncvar_def(name="PM25", units="ug/m^3", dim=list(lonDim, latDim, timeDim), missval=-1e30)
+  pm25Var <- ncvar_def(name="PM25", units="ug/m^3", 
+                       dim=list(lonDim, latDim, timeDim), missval=-1e30)
   
   # Create a new netcdf file 
   fileName_v2 <- str_replace(fileName, ".nc", "_v2.nc")
@@ -108,8 +109,27 @@ bs2v2 <- function(fileName) {
   
 }
 
+nc
+
 # Now run this function on the file we just downloaded
 bs2v2(fileName)
 list.files(pattern='*.nc')
 
+test_ncdf <- nc_open("smoke_dispersion_v2.nc")
+test_ncdf$dim$time
 
+
+# sets date time to moutain standard
+date_time <- format(as.POSIXct(ncvar_get(test_ncdf, "time"), 
+                               origin="1970-1-1", tz="GMT"),
+                    tz = "America/Denver")
+date_time
+# try to subset to next day
+min_date <- min(date_time)
+
+min_date
+
+date_time2 <- date_time[30:54]
+
+# test subset by date_time2
+next_day_nc <- subset(ncvar_get(test_ncdf, time)[30:54])
