@@ -26,10 +26,12 @@ smk_brick <- brick(nc_path)
 
 # set upper bound to 160 and anything lower to NA for nicer raster presentation
 smk_brick <- calc(smk_brick, fun=function(x){
-  x[x > 160] <- 160;
-  x[x < 5] <- NA; return(x)
+  x[x > 159] <- 159;
+  x[x < 5] <- NA; 
+  return(x)
 })
 
+summary(smk_brick)
 
 # find the max range
 max_pm <- max(summary(smk_brick)[5,])
@@ -56,7 +58,7 @@ server <- (function(input, output){
       addTiles() %>% 
       # set bounds of map
       fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
-      addLegend(pal=pal, values=c(0,max_pm), title = "Smoke ug/m^3",
+      addLegend(pal=pal, values=c(0, 160), title = "Smoke ug/m^3",
                 position = "bottomright")
     
   }) #

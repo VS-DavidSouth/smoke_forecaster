@@ -109,8 +109,6 @@ bs2v2 <- function(fileName) {
   
 }
 
-nc
-
 # Now run this function on the file we just downloaded
 bs2v2(fileName)
 list.files(pattern='*.nc')
@@ -133,3 +131,4 @@ date_time2 <- date_time[30:54]
 
 # test subset by date_time2
 next_day_nc <- subset(ncvar_get(test_ncdf, time)[30:54])
+?`ncdf4-package`
