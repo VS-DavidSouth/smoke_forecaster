@@ -16,26 +16,29 @@ library(ncdf4)
 # define direct path to file
 #nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
 nc_path <- "smoke_dispersion_v2.nc"
+
+# trying single raster layer
+#smk_forecast <- raster(nc_path)
+
 # brick or stack works
 smk_brick <- brick(nc_path)
 
-# testing to see if it's a size of raster brick issue
-#smk_brick <- smk_brick1[[1:10]]
-
-#rm(smk_brick1)
-
+# # testing to see if it's a size of raster brick issue
+# #smk_brick <- smk_brick1[[1:10]]
+# 
+# #rm(smk_brick1)
+# 
 # set upper bound to 160 and anything lower to NA for nicer raster presentation
-smk_brick <- calc(smk_brick, fun=function(x){
-  x[x > 159] <- 159;
-  x[x < 5] <- NA; 
-  return(x)
-})
+ smk_brick <- calc(smk_brick, fun=function(x){
+   x[x > 159] <- 159;
+   x[x < 5] <- NA; 
+   return(x)
+ })
 
-summary(smk_brick)
 
 # find the max range
-max_pm <- max(summary(smk_brick)[5,])
-
+max_pm <- max(summary(smk_brick))
+summary(smk_brick)
 # convert character names to numeric
 date_time <- as.numeric(substring(smk_brick@data@names, 2))
 # now assign date time stamp
