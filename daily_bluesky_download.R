@@ -12,6 +12,7 @@
 # libraries needed
 library(ncdf4)
 library(stringr)
+library(raster) # easier to manipulate than netcdf file
 
 # download bluesky daily output -----------------------------------------------
 
@@ -109,26 +110,28 @@ bs2v2 <- function(fileName) {
   
 }
 
+# I'm beginning to think it might just be easier to work with a raster layer
+# rather than ncdf
 # Now run this function on the file we just downloaded
 bs2v2(fileName)
 list.files(pattern='*.nc')
 
-test_ncdf <- nc_open("smoke_dispersion_v2.nc")
-test_ncdf$dim$time
+# working with the raster brick of the nc file
+#nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
+nc_path <- "smoke_dispersion_v2.nc"
+# brick or stack 
+smk_brick <- brick(nc_path)
 
+# subset raster brick to the 30th to 54th layer (next day MST)
+next_day_smk <- smk_brick[[30:54]]
+
+# create raster layer of daily mean value
+next_day_mean_smk <- mean(next_day_smk)
+
+writeRaster(next_day_mean_smk, "smk_forecast_raster.nc", format = "CDF",
+            overwrite=T)
 
 # sets date time to moutain standard
-date_time <- format(as.POSIXct(ncvar_get(test_ncdf, "time"), 
-                               origin="1970-1-1", tz="GMT"),
-                    tz = "America/Denver")
-date_time
-# try to subset to next day
-min_date <- min(date_time)
-
-min_date
-
-date_time2 <- date_time[30:54]
-
-# test subset by date_time2
-next_day_nc <- subset(ncvar_get(test_ncdf, time)[30:54])
-?`ncdf4-package`
+# date_time <- format(as.POSIXct(ncvar_get(test_ncdf, "time"), 
+#                                origin="1970-1-1", tz="GMT"),
+#                     tz = "America/Denver")
