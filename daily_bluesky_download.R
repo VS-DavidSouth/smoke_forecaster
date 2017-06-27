@@ -14,6 +14,9 @@ library(ncdf4)
 library(stringr)
 library(raster) # easier to manipulate than netcdf file
 
+# set working directory for this script
+setwd("/srv/shiny-server/smoke_forecaster/")
+
 # download bluesky daily output -----------------------------------------------
 
 # date is needed for download; taking out "-" separator; adding 00 to get first

@@ -16,8 +16,8 @@ library(raster)
 library(ncdf4)
 
 # define direct path to file
-#nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
-nc_path <- "smk_forecast_raster.nc"
+nc_path <- "/srv/shiny-server/smoke_forecaster/smk_forecast_raster.nc"
+#nc_path <- "smk_forecast_raster.nc"
 
 # using single raster layer of next day average
 smk_forecast <- raster(nc_path)
@@ -34,6 +34,9 @@ smk_forecast <- raster(nc_path)
 pal <- colorNumeric(c("#F0F2F0", "#000c40"), domain = c(0,200),
                     na.color = "transparent")
 
+# identify tomorrows date
+date_tomorrow <- format(as.Date(Sys.Date()+1), "%B %d, %Y")
+ 
 # server section that will eventually go in it's own script
 server <- (function(input, output){
   
@@ -55,6 +58,8 @@ server <- (function(input, output){
 # set up shiny layout
 ui <- bootstrapPage(
   tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
+  # add title
+  titlePanel(paste0("Daily Average Smoke Concentration for ", date_tomorrow)),
   # initialize map
   leafletOutput("map", width = "100%", height="100%")
 ) # end UI function
