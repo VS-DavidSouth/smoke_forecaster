@@ -147,13 +147,6 @@ smoke_stack <- brick(same_day_mean_smk,next_day_mean_smk)
 rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
      next_day_mean_smk)
 
-# save raster grid as a shapefile to calculate proportion intersect
-# note I only need to do this once
-bluesky_grid <- rasterToPolygons(smoke_stack[[1]])
-
-plot(bluesky_grid)
-
-
 # write smoke stack ----
 writeRaster(smoke_stack, "smk_stack_raster.nc", format = "CDF",
             overwrite=T)
