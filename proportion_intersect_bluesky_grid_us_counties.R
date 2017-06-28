@@ -9,6 +9,7 @@
 # load libraries ----
 library(raster)
 library(sf)
+library(tidyverse)
 
 # load raster brick ----
 nc_path <- "smk_stack_raster.nc"
@@ -17,4 +18,10 @@ nc_path <- "smk_stack_raster.nc"
 smk_forecast <- brick(nc_path)
 
 # subset to one layer and plot grid
-bluesky_grid <- smk_forecast[[1]]
+bluesky_grid <- rasterToPolygons(smk_forecast[[1]])
+plot(bluesky_grid)
+bluesky_grid
+
+# get ids of cells
+test <- sapply(slot(bluesky_grid, "polygons"), function(x) slot(x, "ID"))
+head(test)
