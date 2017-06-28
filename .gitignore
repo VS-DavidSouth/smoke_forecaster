@@ -12,3 +12,5 @@ smoke_dispersion/
 
 # ignore rsconnect folder
 rsconnect/
+# ignore shapefile foler
+tl_2016_us_county/
