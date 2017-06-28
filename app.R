@@ -20,7 +20,8 @@ library(ncdf4)
 nc_path <- "smk_stack_raster.nc"
 
 # using single raster layer of next day average
-smk_forecast <- raster(nc_path)
+smk_forecast <- brick(nc_path)
+
 
 # set upper bound to 160 and anything lower to NA for nicer raster presentation
  smk_forecast <- calc(smk_forecast, fun=function(x){
@@ -49,12 +50,24 @@ server <- (function(input, output){
       addTiles() %>% 
       # set bounds of map
       fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
-      addRasterImage(smk_forecast, colors = pal, opacity = 0.7, project = T) %>% 
       addLegend(pal=pal, values=c(0, 200), title = "Smoke ug/m^3",
                 position = "bottomright")
+  })# end base leaflet
+  
+  # add interactive raster layer
+  observeEvent(input$date_smoke,{
+  # reactive raster layer
+    index <- as.numeric(input$date_smoke)
     
-  }) #
+    r <- reactive({smk_forecast[[index]]})
+    
+    # call proxy map
+    leafletProxy(mapId="map") %>%
+      clearImages() %>%
+      addRasterImage(r(), colors = pal, opacity = 0.8, project = T) 
 
+  }) # end reactive layer
+    
 }) # end server function
 
 # set up shiny layout
@@ -66,10 +79,15 @@ ui <- bootstrapPage(
   leafletOutput("map", width = "100%", height="100%"),
   # adding a radio button for today's or tomorrow's forecast
   absolutePanel(top = 75, right = 25,
-                radioButtons("date_smoke", label = "Date of Smoke", 
-                              c(todays_date=1, date_tomorrow=2),
-                              selected = 1))
-) # end UI function
+                radioButtons("date_smoke", label = h3("Date of Smoke"), 
+                              choices = list("Today"=1, "Tomorrow"=2),
+                              selected = 1), hr(), 
+                              fluidRow(column(2,verbatimTextOutput("value"))))
+  # note for the radio button; having trouble listing date based on system time
+  ) # end UI function
 
 
 shinyApp(ui = ui, server = server)
+
+dim(smk_forecast$X1)
+
