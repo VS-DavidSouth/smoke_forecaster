@@ -64,4 +64,5 @@ ui <- bootstrapPage(
   leafletOutput("map", width = "100%", height="100%")
 ) # end UI function
 
-shinyApp(ui = ui, server = server)
+
+#shinyApp(ui = ui, server = server)
