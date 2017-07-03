@@ -148,7 +148,6 @@ rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
      next_day_mean_smk)
 
 # write smoke stack ----
-writeRaster(smoke_stack, "smk_stack_raster.nc", format = "CDF",
-            overwrite=T)
+writeRaster(smoke_stack, "smk_stack_raster.nc", overwrite = T)
 
 

@@ -2,7 +2,7 @@
 # Title: App script for smoke forecaster shiny app
 # Author: Ryan Gan and Steve Brey
 # Date Created: 6/17/17
-# R Version 3.3.3 
+# R Version 3.4.0 
 # ------------------------------------------------------------------------------
 
 # note this script contains both ui and server function. I modified to make this 
@@ -20,6 +20,9 @@ library(ncdf4)
 nc_path <- "smk_stack_raster.nc"
 
 # using single raster layer of next day average
+# note july 3rd 2017: brick is causing shiny app to not run
+# error message: ERROR: "R_nc4_open" not available for .C() for package "ncdf4"
+# perhaps it doesn't like; also asked tyson to install gdal on server which may help
 smk_forecast <- brick(nc_path)
 
 
@@ -56,7 +59,7 @@ server <- (function(input, output){
   
   # add interactive raster layer
   observeEvent(input$date_smoke,{
-  # reactive raster layer
+   reactive raster layer
     index <- as.numeric(input$date_smoke)
     
     r <- reactive({smk_forecast[[index]]})
@@ -86,8 +89,7 @@ ui <- bootstrapPage(
   # note for the radio button; having trouble listing date based on system time
   ) # end UI function
 
-
+# launch shiny app (this is necessary for running on server)
 shinyApp(ui = ui, server = server)
 
-dim(smk_forecast$X1)
 
