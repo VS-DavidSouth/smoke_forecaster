@@ -13,11 +13,11 @@
 library(shiny)
 library(leaflet)
 library(raster)
-library(ncdf4)
+#library(ncdf4)
 
 # define direct path to file
-#nc_path <- "/srv/shiny-server/smoke_forecaster/smk_forecast_raster.nc"
-nc_path <- "smk_stack_raster.nc"
+nc_path <- "/srv/shiny-server/smoke_forecaster/smk_stack_raster.nc"
+# nc_path <- "smk_stack_raster.nc"
 
 # using single raster layer of next day average
 # note july 3rd 2017: brick is causing shiny app to not run
@@ -43,7 +43,7 @@ todays_date <- format(as.Date(Sys.Date()), "%B %d, %Y")
 # identify tomorrows date
 date_tomorrow <- format(as.Date(Sys.Date()+1), "%B %d, %Y")
  
-# server section that will eventually go in it's own script
+# server section ----
 server <- (function(input, output){
   
   # add base leaflet map
@@ -59,7 +59,7 @@ server <- (function(input, output){
   
   # add interactive raster layer
   observeEvent(input$date_smoke,{
-   reactive raster layer
+   # reactive raster layer
     index <- as.numeric(input$date_smoke)
     
     r <- reactive({smk_forecast[[index]]})
