@@ -113,6 +113,10 @@ bs2v2 <- function(fileName) {
   
 }
 
+# close original nc connection
+nc_close(nc)
+rm(nc)
+
 # I'm beginning to think it might just be easier to work with a raster layer
 # rather than ncdf
 # Now run this function on the file we just downloaded
@@ -125,16 +129,25 @@ nc_path <- "smoke_dispersion_v2.nc"
 # brick or stack 
 smk_brick <- brick(nc_path)
 
+# create raster layer of same day mean value
+same_day_smk <- smk_brick[[1:29]]
+# create raster layer of mean value
+same_day_mean_smk <- mean(same_day_smk)
+
 # subset raster brick to the 30th to 54th layer (next day MST)
 next_day_smk <- smk_brick[[30:54]]
 
 # create raster layer of daily mean value
 next_day_mean_smk <- mean(next_day_smk)
 
-writeRaster(next_day_mean_smk, "smk_forecast_raster.nc", format = "CDF",
-            overwrite=T)
+# make raster brick of same_day and next_day mean smoke
+smoke_stack <- brick(same_day_mean_smk,next_day_mean_smk)
 
-# sets date time to moutain standard
-# date_time <- format(as.POSIXct(ncvar_get(test_ncdf, "time"), 
-#                                origin="1970-1-1", tz="GMT"),
-#                     tz = "America/Denver")
+# remove raster files to save space
+rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
+     next_day_mean_smk)
+
+# write smoke stack ----
+writeRaster(smoke_stack, "smk_stack_raster.nc", overwrite = T)
+
+

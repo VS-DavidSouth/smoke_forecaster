@@ -89,12 +89,6 @@ ui <- bootstrapPage(
   # note for the radio button; having trouble listing date based on system time
   ) # end UI function
 
-<<<<<<< HEAD
-
-#shinyApp(ui = ui, server = server)
-=======
 # launch shiny app (this is necessary for running on server)
 shinyApp(ui = ui, server = server)
 
-
->>>>>>> c93c6f089b8f1d3d6a40956c6aa572fdd3240985
