@@ -16,8 +16,8 @@ library(raster)
 #library(ncdf4)
 
 # define direct path to file
-nc_path <- "/srv/shiny-server/smoke_forecaster/smk_stack_raster.nc"
-# nc_path <- "smk_stack_raster.nc"
+#nc_path <- "/srv/shiny-server/smoke_forecaster/smk_stack_raster.nc"
+ nc_path <- "smk_stack_raster.nc"
 
 # using single raster layer of next day average
 # note july 3rd 2017: brick is causing shiny app to not run
