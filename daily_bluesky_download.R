@@ -13,6 +13,7 @@
 library(ncdf4)
 library(stringr)
 library(raster) # easier to manipulate than netcdf file
+library(rgdal)
 
 # set working directory for this script
 setwd("/srv/shiny-server/smoke_forecaster/")
@@ -129,6 +130,7 @@ nc_path <- "smoke_dispersion_v2.nc"
 # brick or stack 
 smk_brick <- brick(nc_path)
 
+summary(smk_brick)
 # create raster layer of same day mean value
 same_day_smk <- smk_brick[[1:29]]
 # create raster layer of mean value
@@ -142,12 +144,22 @@ next_day_mean_smk <- mean(next_day_smk)
 
 # make raster brick of same_day and next_day mean smoke
 smoke_stack <- brick(same_day_mean_smk,next_day_mean_smk)
+plot(smoke_stack)
+# convert smoke_stack to polygon/shape
+smk_poly <- rasterToPolygons(smoke_stack)
+
+plot(smk_poly)
+# subsetting smk_polygon to only those with values > 5 
+# to make polygon file smaller and easier to project
+smk_poly <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
 
 # remove raster files to save space
 rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
-     next_day_mean_smk)
+     next_day_mean_smk, smoke_stack)
 
-# write smoke stack ----
-writeRaster(smoke_stack, "smk_stack_raster.nc", overwrite = T)
+class(smk_poly)
+# write smoke polygon ----
+writeOGR(obj = smk_poly, dsn = "./smk_poly", 
+         layer = "smk_poly", driver = "ESRI Shapefile")
 
 
