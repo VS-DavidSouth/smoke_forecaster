@@ -64,39 +64,40 @@ server <- (function(input, output){
       # set bounds of map
       fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
       addLegend(pal=pal, values=c(0, 250), title = "Smoke ug/m^3",
-                position = "bottomright") %>% 
-      addPolygons(data = smk_forecast, 
-                  color = "tranparent", 
-                  fillColor = ~pal(smk_forecast$layer_2), 
-                  weight = 1, smoothFactor = 2,
-                  fillOpacity = 0.5,
-                  # add highlight option
-                  highlight = highlightOptions(
-                    weight = 5, color = "blue", bringToFront = T, fillOpacity = 0.8),
-                  # add smoke pm values
-                  label = pm_label
-      )
+                position = "bottomright") #%>% 
+      # i will remove the following code if the reactive layer works
+      # addPolygons(data = smk_forecast, 
+      #             color = "tranparent", 
+      #             fillColor = ~pal(getElement(smk_forecast@data, layer_name)), 
+      #             weight = 1, smoothFactor = 2,
+      #             fillOpacity = 0.5,
+      #             # add highlight option
+      #             highlight = highlightOptions(
+      #               weight = 5, color = "blue", bringToFront = T, fillOpacity = 0.8),
+      #             # add smoke pm values
+      #             label = pm_label
+      # )
     
   })# end base leaflet
   
   # add interactive raster layer
   observeEvent(input$date_smoke,{
    # set index as 1 or 2 for easier index
-    poly_name <- as.numeric(input$date_smoke)
-   # reactive polygon layer
-    poly <- reactive({smk_forecast[[index]]})
+    layer_name <- as.character(input$date_smoke)
+  # define smoke label values
+  pm_label <- sprintf("%g ug/m^3 of smoke", 
+    round(getElement(smk_forecast@data, layer_name), 1)) %>% 
+    lapply(htmltools::HTML)
     
-    # define smoke label values
-    pm_label <- sprintf("%g ug/m^3 of smoke", round(smk_forecast$layer_2, 1)) %>% 
-      lapply(htmltools::HTML)
+   # reactive polygon layer
+    vals <- reactive({getElement(smk_forecast@data, layer_name)})
     
     # call proxy map
     leafletProxy(mapId="map") %>%
-      #removeShape() %>%
       # add polygon 
-      addPolygons(data = poly(), # data = smk_forecast, 
+      addPolygons(data = smk_forecast, 
         color = "tranparent", 
-        #fillColor = ~pal(smk_forecast$layer_2), 
+        fillColor = ~pal(vals()), 
         weight = 1, smoothFactor = 2,
         fillOpacity = 0.5,
         # add highlight option
