@@ -29,9 +29,9 @@ url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
   "GFS-0.15deg/", todays_date, "/forecast/data/smoke_dispersion.nc")
 
 # Download a netcdf file to work with
-download.file(url = url_path, destfile = "smoke_dispersion.nc", mode = "wb")
+download.file(url = url_path, destfile = "./data/smoke_dispersion.nc", mode = "wb")
 
-fileName <- "smoke_dispersion.nc"
+fileName <- "./data/smoke_dispersion.nc"
 
 # netcdf file manipulaton ------------------------------------------------------
 nc <- nc_open(fileName)
@@ -126,7 +126,7 @@ list.files(pattern='*.nc')
 
 # working with the raster brick of the nc file
 #nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
-nc_path <- "smoke_dispersion_v2.nc"
+nc_path <- "./data/smoke_dispersion_v2.nc"
 # brick or stack 
 smk_brick <- brick(nc_path)
 
@@ -156,7 +156,7 @@ rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
      next_day_mean_smk, smoke_stack)
 
 # write smoke polygon ----
-writeOGR(obj = smk_poly, dsn = "./smk_poly", 
+writeOGR(obj = smk_poly, dsn = "./data/smk_poly", 
          layer = "smk_poly", driver = "ESRI Shapefile")
 
 

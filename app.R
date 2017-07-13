@@ -14,12 +14,13 @@ library(shiny)
 library(leaflet)
 library(rgdal) # read shapefile
 
-# define direct path to polygon file
-#poly_path <- "/srv/shiny-server/smoke_forecaster/smk_stack_raster.nc"
-poly_path <- "smk_poly"
+# define relative path to polygon file
+
+poly_path <- "./data/smk_poly"
+poly_layer <- "smk_poly"
 
 # read in shapefile
-smk_forecast <- readOGR(dsn = poly_path, layer = poly_path)
+smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
 
 # set upper bound to 200
 smk_forecast[smk_forecast$layer_1 >= 250, ] <- 249
@@ -45,7 +46,7 @@ ui <- bootstrapPage(
   leafletOutput("map", width = "100%", height="100%"),
   # adding a radio button for today's or tomorrow's forecast
   absolutePanel(top = 75, right = 25,
-                radioButtons("date_smoke", label = h3("Date of Smoke"), 
+                radioButtons("date_smoke", label = h2("Date of Smoke"), 
                              choices = list("Today"="layer_1", 
                                             "Tomorrow"="layer_2"),
                              selected = "layer_1"), hr(), 
@@ -64,19 +65,7 @@ server <- (function(input, output){
       # set bounds of map
       fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
       addLegend(pal=pal, values=c(0, 250), title = "Smoke ug/m^3",
-                position = "bottomright") #%>% 
-      # i will remove the following code if the reactive layer works
-      # addPolygons(data = smk_forecast, 
-      #             color = "tranparent", 
-      #             fillColor = ~pal(getElement(smk_forecast@data, layer_name)), 
-      #             weight = 1, smoothFactor = 2,
-      #             fillOpacity = 0.5,
-      #             # add highlight option
-      #             highlight = highlightOptions(
-      #               weight = 5, color = "blue", bringToFront = T, fillOpacity = 0.8),
-      #             # add smoke pm values
-      #             label = pm_label
-      # )
+                position = "bottomright") 
     
   })# end base leaflet
   
