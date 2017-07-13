@@ -12,5 +12,8 @@ smoke_dispersion/
 
 # ignore rsconnect folder
 rsconnect/
-# ignore shapefile foler
+# ignore shapefile folder
 tl_2016_us_county/
+
+# ignore smoke polygon folder
+smk_poly/
