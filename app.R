@@ -10,6 +10,7 @@
 # exists in the ui and server code.
 
 # load libraries ---------------------------------------------------------------
+library(shinydashboard)
 library(shiny)
 library(leaflet)
 library(rgdal) # read shapefile
@@ -19,7 +20,7 @@ library(rgdal) # read shapefile
 poly_path <- "./data/smk_poly"
 poly_layer <- "smk_poly"
 
-# read in shapefile
+# read in smoke forecast shapefile ----
 smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
 
 # set upper bound to 200
@@ -32,26 +33,49 @@ bin <- c(0, 5, 10, 25, 50, 100, 250)
 pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
                     na.color = "transparent")
 
-# identify today's date
-todays_date <- format(as.Date(Sys.Date()), "%B %d, %Y")
-# identify tomorrows date
-date_tomorrow <- format(as.Date(Sys.Date()+1), "%B %d, %Y")
+# read in saved R dates ----
+load("./data/date_label.RData")
 
-# set up shiny layout
-ui <- bootstrapPage(
-  tags$style(type = "text/css", "html, body {width:100%;height:100%}"),
-  # add title
-  titlePanel("Forecasted Wildfire Smoke"),
-  # initialize map
-  leafletOutput("map", width = "100%", height="100%"),
-  # adding a radio button for today's or tomorrow's forecast
-  absolutePanel(top = 75, right = 25,
-                radioButtons("date_smoke", label = h2("Date of Smoke"), 
-                             choices = list("Today"="layer_1", 
-                                            "Tomorrow"="layer_2"),
-                             selected = "layer_1"), hr(), 
-                fluidRow(column(2,verbatimTextOutput("value"))))
-  # note for the radio button; having trouble listing date based on system time
+# create date names list to use with the radio button
+date_list <- list("layer_1", "layer_2")
+names(date_list) <- date_labels
+
+# shiny dash board ui ----
+# note: 7/14/2017: I like the dashboard layout, but it may be better to define
+# the three elemnts of the dashboard outside the ui.
+
+# uses the shinydashboard package for dashboard layout
+
+ui <- dashboardPage(
+  # dashboard header
+  dashboardHeader(title = "Beta Smoke ForecasteR"),
+
+  # dashboard side bar neads to be in function
+  dashboardSidebar(disable = T),
+  # dashboard body
+  dashboardBody(
+    # set up two rows
+    fluidRow(
+    # lefthand side radio button
+    # adding a radio button for today's or tomorrow's forecast
+      column(width = 3, 
+        box(width = NULL, status = "success",
+          radioButtons("date_smoke", label = h2("Date to Forecast"), 
+            choices = date_list, selected = "layer_1"), hr()
+               ), # end box
+        # message
+        p(class = "text-muted", paste("Smoke forecast uses BlueSky output",
+          "and estimates daily average smoke concentrations for today and tomorrow.",
+          "Since this is an early stage beta, the layout is crude and subject to changing",
+          "There are still a lot of features planned including: a health component",
+          "integration with daily AQS values, location of fires, etc."))
+           ),
+      column(width = 9, 
+        # initialize map
+        box(leafletOutput("map", width = "700", height="500"))
+            )
+      )# end fluid row
+    )# end dashboard body
 ) # end UI function
 
 # server section ----
@@ -64,8 +88,11 @@ server <- (function(input, output){
       addTiles() %>% 
       # set bounds of map
       fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
+      # set a box that defines the dimensions of bluesky forecast
+      addRectangles(lng1=-125, lat1=50, lng2=-67, lat2=25,
+        fillColor = "transparent", color = "blue") %>%
       addLegend(pal=pal, values=c(0, 250), title = "Smoke ug/m^3",
-                position = "bottomright") 
+                position = "bottomleft") 
     
   })# end base leaflet
   
