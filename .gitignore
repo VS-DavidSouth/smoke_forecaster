@@ -17,3 +17,6 @@ tl_2016_us_county/
 
 # ignore smoke polygon folder
 smk_poly/
+
+# ignore data folder
+data/
