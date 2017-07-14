@@ -130,17 +130,37 @@ nc_path <- "./data/smoke_dispersion_v2.nc"
 # brick or stack 
 smk_brick <- brick(nc_path)
 
+# calculate same day daily average ----
 # create raster layer of same day mean value
 same_day_smk <- smk_brick[[1:29]]
 # create raster layer of mean value
 same_day_mean_smk <- mean(same_day_smk)
-
+# extract the date without timestamp (taking element date 15 frome 1:29)
+same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[15]
+# assign date time stamp in a format of month_day_year to bind with name
+same_day_date <- format(as.POSIXct(same_day_date, origin="1970-1-1", tz="GMT"),
+                    format = "%b %d %Y")
+  
+# calculate next day daily average -----
 # subset raster brick to the 30th to 54th layer (next day MST)
 next_day_smk <- smk_brick[[30:54]]
-
 # create raster layer of daily mean value
 next_day_mean_smk <- mean(next_day_smk)
+# extract next day's date
+next_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[45]
+# assign date time stamp in a format of month_day_year to bind with name
+next_day_date <- format(as.POSIXct(next_day_date, origin="1970-1-1", tz="GMT"),
+                        format = "%b %d %Y")
 
+# creating a vector of the character dates and saving to use in shiny labels
+# note I think it's easier to save as a seperate file than label the layers of 
+# the shape layers; I suspect less bugs with generic names in the shapefile than
+# a changing date
+date_labels <- c(same_day_date, next_day_date)
+# saving character string of dates
+save(date_labels, file = "./data/date_label.RData")
+
+# create raster brick and create spatial polygon ----
 # make raster brick of same_day and next_day mean smoke
 smoke_stack <- brick(same_day_mean_smk,next_day_mean_smk)
 
