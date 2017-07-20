@@ -16,7 +16,6 @@ library(leaflet)
 library(rgdal) # read shapefile
 
 # define relative path to polygon file
-
 poly_path <- "./data/smk_poly"
 poly_layer <- "smk_poly"
 
@@ -29,7 +28,7 @@ smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 
 # define color bin for layer ----
 # going with a bin since it will be easier to handle extreme colors
-bin <- c(0, 5, 10, 25, 50, 100, 250)
+bin <- c(0, 10, 20, 30, 40, 50, 100, 250)
 pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
                     na.color = "transparent")
 
@@ -43,39 +42,41 @@ names(date_list) <- date_labels
 # shiny dash board ui ----
 # note: 7/14/2017: I like the dashboard layout, but it may be better to define
 # the three elemnts of the dashboard outside the ui.
-
-# uses the shinydashboard package for dashboard layout
-
-ui <- dashboardPage(
-  # dashboard header
-  dashboardHeader(title = "Beta Smoke ForecasteR"),
-
-  # dashboard side bar neads to be in function
-  dashboardSidebar(disable = T),
-  # dashboard body
+# header
+head <- dashboardHeader(title = "Beta Smoke ForecasteR")
+# side bar
+side <- dashboardSidebar(disable = T)
+# body
+body <- # dashboard body
   dashboardBody(
     # set up two rows
     fluidRow(
-    # lefthand side radio button
-    # adding a radio button for today's or tomorrow's forecast
+      # lefthand side radio button
+      # adding a radio button for today's or tomorrow's forecast
       column(width = 3, 
         box(width = NULL, status = "success",
           radioButtons("date_smoke", label = h2("Date to Forecast"), 
-            choices = date_list, selected = "layer_1"), hr()
-               ), # end box
-        # message
+          choices = date_list, selected = "layer_1"), hr()
+             ), # end box
+             # message
         p(class = "text-muted", paste("Smoke forecast uses BlueSky output",
-          "and estimates daily average smoke concentrations for today and tomorrow.",
-          "Since this is an early stage beta, the layout is crude and subject to changing",
-          "There are still a lot of features planned including: a health component",
-          "integration with daily AQS values, location of fires, etc."))
-           ),
+        "and estimates daily average smoke concentrations for today and tomorrow.",
+        "Since this is an early stage beta, the layout is crude and subject to changing",
+        "There are still a lot of features planned including: a health component",
+        "integration with daily AQS values, location of fires, etc."))
+      ), 
       column(width = 9, 
         # initialize map
         box(leafletOutput("map", width = "700", height="500"))
-            )
-      )# end fluid row
-    )# end dashboard body
+      )
+    )# end fluid row
+  )# end dashboard body
+  
+  
+  
+ui <- dashboardPage(
+  # dashboard header, side, adn body
+  head,side,body
 ) # end UI function
 
 # server section ----
@@ -91,39 +92,49 @@ server <- (function(input, output){
       # set a box that defines the dimensions of bluesky forecast
       addRectangles(lng1=-125, lat1=50, lng2=-67, lat2=25,
         fillColor = "transparent", color = "blue") %>%
-      addLegend(pal=pal, values=c(0, 250), title = "Smoke ug/m^3",
+      addLegend(pal=pal, values=c(0, 250), 
+        title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
                 position = "bottomleft") 
-    
   })# end base leaflet
   
   # add interactive raster layer
   observeEvent(input$date_smoke,{
-   # set index as 1 or 2 for easier index
-    layer_name <- as.character(input$date_smoke)
+  # set index as 1 or 2 for easier index
+  layer_name <- as.character(input$date_smoke)
   # define smoke label values
-  pm_label <- sprintf("%g ug/m^3 of smoke", 
-    round(getElement(smk_forecast@data, layer_name), 1)) %>% 
+  # Smoke Concentration: value ug/m^3 \return
+  # Relative Increase in Risk: value %
+  pm_label <- sprintf(paste0(
+    "<strong>Smoke Concentration: %g <span>&#181;</span>g/m<sup>3</sup></strong>",
+    "<br> Respiratory Relative Risk: %g"), 
+    # number for smoke concentration
+    round(smk_forecast@data$layer_1,1), 
+    # number for relative risk
+    round(exp(smk_forecast@data$layer_1/10*0.0507),2))%>% 
     lapply(htmltools::HTML)
+
+
+  # reactive polygon layer
+  vals <- reactive({getElement(smk_forecast@data, layer_name)})
     
-   # reactive polygon layer
-    vals <- reactive({getElement(smk_forecast@data, layer_name)})
-    
-    # call proxy map
-    leafletProxy(mapId="map") %>%
-      # add polygon 
+  # call proxy map
+  leafletProxy(mapId="map") %>%
+    # add polygon 
       addPolygons(data = smk_forecast, 
         color = "tranparent", 
         fillColor = ~pal(vals()), 
-        weight = 1, smoothFactor = 2,
+        weight = 1, smoothFactor = 1,
         fillOpacity = 0.5,
         # add highlight option
         highlight = highlightOptions(
           weight = 5, color = "blue", bringToFront = T, fillOpacity = 0.8),
         # add smoke pm values
-        label = pm_label
+        label = pm_label,
+        labelOptions = labelOptions(style = list("font-weight" = "normal", 
+          padding = "3px 8px"), textsize = "12px", direction = "auto")
       )
   }) # end reactive layer
-    
+  
 }) # end server function
 
 
