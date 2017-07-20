@@ -140,7 +140,7 @@ same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[15]
 # assign date time stamp in a format of month_day_year to bind with name
 same_day_date <- format(as.POSIXct(same_day_date, origin="1970-1-1", tz="GMT"),
                     format = "%b %d %Y")
-  
+
 # calculate next day daily average -----
 # subset raster brick to the 30th to 54th layer (next day MST)
 next_day_smk <- smk_brick[[30:54]]
