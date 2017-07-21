@@ -15,14 +15,15 @@ library(shiny)
 library(leaflet)
 library(rgdal) # read shapefile
 
+# read in smoke forecast shapefile ----
 # define relative path to polygon file
 poly_path <- "./data/smk_poly"
 poly_layer <- "smk_poly"
 
-# read in smoke forecast shapefile ----
+# read polygon
 smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
 
-# set upper bound to 200
+# set upper bound to 250
 smk_forecast[smk_forecast$layer_1 >= 250, ] <- 249
 smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 
@@ -39,22 +40,31 @@ load("./data/date_label.RData")
 date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
+# read in fire locations ----
+fire_locations <- read.csv("./data/fire_locations.csv")
+# type indicates either wildfire (WF) or prescription burn (RX)
+# set color of WF to red and RX to green
+pal_fire <- colorFactor(
+  palette = c("red", "green"),
+  levels = c("WF", "RX")
+  )
+
 # shiny dash board ui ----
 # note: 7/14/2017: I like the dashboard layout, but it may be better to define
 # the three elemnts of the dashboard outside the ui.
 # header
-head <- dashboardHeader(title = "Beta Smoke ForecasteR")
+head <- dashboardHeader(title = "Beta Smoke ForecasteR",
+  titleWidth = 450)
 # side bar
 side <- dashboardSidebar(disable = T)
 # body
-body <- # dashboard body
-  dashboardBody(
+body <- dashboardBody(
     # set up two rows
     fluidRow(
       # lefthand side radio button
       # adding a radio button for today's or tomorrow's forecast
-      column(width = 3, 
-        box(width = NULL, status = "success",
+      column(width = 2, 
+        box(width = NULL, color = "black",
           radioButtons("date_smoke", label = h2("Date to Forecast"), 
           choices = date_list, selected = "layer_1"), hr()
              ), # end box
@@ -65,19 +75,16 @@ body <- # dashboard body
         "There are still a lot of features planned including: a health component",
         "integration with daily AQS values, location of fires, etc."))
       ), 
-      column(width = 9, 
+      column(width = 10, 
         # initialize map
-        box(leafletOutput("map", width = "700", height="500"))
+        box(leafletOutput("map", width = "500", height="400"))
       )
     )# end fluid row
   )# end dashboard body
   
   
-  
-ui <- dashboardPage(
-  # dashboard header, side, adn body
-  head,side,body
-) # end UI function
+# ui function  
+ui <- dashboardPage(head,side,body, skin = "black") # dashboard header, side, and body
 
 # server section ----
 server <- (function(input, output){
@@ -92,9 +99,15 @@ server <- (function(input, output){
       # set a box that defines the dimensions of bluesky forecast
       addRectangles(lng1=-125, lat1=50, lng2=-67, lat2=25,
         fillColor = "transparent", color = "blue") %>%
+      # add legend for smoke values
       addLegend(pal=pal, values=c(0, 250), 
         title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-                position = "bottomleft") 
+                position = "bottomleft") %>% 
+      # add fire locaiton icons
+      addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
+        lng = fire_locations$longitude, color = ~pal_fire(type),
+        radius = 0.5)
+
   })# end base leaflet
   
   # add interactive raster layer
