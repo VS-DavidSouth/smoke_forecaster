@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Title: Subset US county shapefile to continental US
 # Purpose: Subset counties to fall within the extent of the Bluesky grid for use
-#          in other calculations and the app.
+#          in other calculations and the app. Final product is a saved shapefile.
 # Author: Ryan Gan
 # Date Created: 7/21/17
 # R Version: 3.3.3
