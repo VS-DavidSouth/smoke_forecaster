@@ -24,11 +24,21 @@ setwd("/srv/shiny-server/smoke_forecaster/")
 # run of the day (just in case there are two)
 todays_date <- paste0(gsub("-","", Sys.Date()), "00")
 
-# define URL path
+# download fire locations from bluesky runs ----
+# note right now I download only the location file, but I may work in
+# fire information in the future. looks like it's contained in the json file
+fire_url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
+  "GFS-0.15deg/", todays_date, "/forecast/data/fire_locations.csv")
+
+download.file(url = fire_url_path, destfile = "./data/fire_locations.csv",
+              mode = "wb")
+
+# download smoke dispersion output ----
+# define URL path for smoke dispersion
 url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
   "GFS-0.15deg/", todays_date, "/forecast/data/smoke_dispersion.nc")
 
-# Download a netcdf file to work with
+# download a netcdf file to work with
 download.file(url = url_path, destfile = "./data/smoke_dispersion.nc", mode = "wb")
 
 fileName <- "./data/smoke_dispersion.nc"
@@ -130,6 +140,8 @@ nc_path <- "./data/smoke_dispersion_v2.nc"
 # brick or stack 
 smk_brick <- brick(nc_path)
 
+#test_grid <-SpatialPixels(SpatialPoints(smk_brick))
+
 # calculate same day daily average ----
 # create raster layer of same day mean value
 same_day_smk <- smk_brick[[1:29]]
@@ -166,6 +178,14 @@ smoke_stack <- brick(same_day_mean_smk,next_day_mean_smk)
 
 # convert smoke_stack to polygon/shape
 smk_poly <- rasterToPolygons(smoke_stack)
+
+# saving bluesky grid shapefile ----
+# this will be commented out once it's done
+# #subsetting just the grid so I can calculate spatial overlays
+# smk_grid <- smk_poly[, 1]
+# # write smoke grid that doesn't have values
+# writeOGR(obj = smk_grid, dsn = "./data/bluesky_grid", layer = "bluesky_grid",
+#          driver = "ESRI Shapefile")
 
 # subsetting smk_polygon to only those with values > 5 
 # to make polygon file smaller and easier to project

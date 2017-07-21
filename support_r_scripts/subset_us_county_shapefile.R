@@ -1,13 +1,13 @@
 # ------------------------------------------------------------------------------
-# Title: Proportion intersect between bluesky grid and US countys
-# Purpose: To create a matrix of proportions to use in population-weighting
+# Title: Subset US county shapefile to continental US
+# Purpose: Subset counties to fall within the extent of the Bluesky grid for use
+#          in other calculations and the app.
 # Author: Ryan Gan
-# Date Created: 6/28/17
+# Date Created: 7/21/17
 # R Version: 3.3.3
 # ------------------------------------------------------------------------------
 
 # load libraries ----
-library(tidyverse)
 library(rgdal)
 library(rgeos)
 
@@ -26,6 +26,7 @@ bbox <- extent(bluesky_grid)
 wgs84 <- proj4string(bluesky_grid)
 
 # load US county grid ----
+# file needs to be unzipped first
 co_path <- "./data/cb_2016_us_county_500k"
 co_layer <- "cb_2016_us_county_500k"
 
