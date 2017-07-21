@@ -7,9 +7,9 @@
 # ------------------------------------------------------------------------------
 
 # load libraries ----
-library(tidyverse)
 library(rgdal)
 library(rgeos)
+# libraries to run in parallel
 
 # load wrfgrid polygon ----
 # define relative path to polygon file
@@ -20,34 +20,19 @@ poly_layer <- "bluesky_grid"
 bluesky_grid <- readOGR(dsn = poly_path, layer = poly_layer)
 bluesky_grid
 
-# get a bounding box of the bluesky grid
-bbox <- extent(bluesky_grid)
-# get projection
-wgs84 <- proj4string(bluesky_grid)
-
 # load US county grid ----
-co_path <- "./data/cb_2016_us_county_500k"
-co_layer <- "cb_2016_us_county_500k"
+co_path <- "./data/us_county"
+co_layer <- "us_county"
 
 # read county polygons
-county <- readOGR(dsn = co_path, layer = co_layer)
-# subset to counties in the us and assign wgs84 coord system
-county <- spTransform(county, CRS(wgs84))
+us_county <- readOGR(dsn = co_path, layer = co_layer)
 
-# gclip function
-gClip <- function(shp, bb){
-  if(class(bb) == "matrix") b_poly <- as(extent(as.vector(t(bb))), "SpatialPolygons")
-  else b_poly <- as(extent(bb), "SpatialPolygons")
-  rgeos::gIntersection(shp, b_poly, byid = T)
-}
+# calculating overlap between the bluesky grid cells and counties ----
+# expecting a large matrix of 3108 counties by 94068 grid cells
+# save county ids (n = 3108) as a vector
+county_id <- as.character(sort(us_county@data$COUNTYFP))
+# assign a grid id to each bluesky cell (i could do this in the other step)
+# save bluesky grid ids as a vector
+bs_id <- as.character(sort(bluesky_grid@data$id))
 
-us_county <- gClip(county, bbox) 
-# plot of counties in the continental US.
-plot(us_county)
 
-# convert to spatial polygon dataframe
-us_county <- as(us_county, "SpatialPolygonsDataFrame")
-
-# looks good; going to save this version of the shapefile
-writeOGR(obj = us_county, dsn = "./data/us_county", layer = "us_county",
-  driver = "ESRI Shapefile")

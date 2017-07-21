@@ -35,15 +35,15 @@ county <- readOGR(dsn = co_path, layer = co_layer)
 # subset to counties in the us and assign wgs84 coord system
 county <- spTransform(county, CRS(wgs84))
 
-# gclip function
-gClip <- function(shp, bb){
-  if(class(bb) == "matrix") b_poly <- as(extent(as.vector(t(bb))), "SpatialPolygons")
-  else b_poly <- as(extent(bb), "SpatialPolygons")
-  rgeos::gIntersection(shp, b_poly, byid = T)
-}
+# Subsetting states in the continental US.
+# I tried clipping, but i was losing information in the shapefile
+# vector of FIPS that are not in the continental us
+outside_bound <- c("60", "66", "15", "72", "78", "02", "81", "64", "67", 
+                   "68", "69", "71")
 
-us_county <- gClip(county, bbox) 
-# plot of counties in the continental US.
+# subset
+us_county <- county[!(county$STATEFP %in% outside_bound), ]
+# check
 plot(us_county)
 
 # convert to spatial polygon dataframe
@@ -51,4 +51,4 @@ us_county <- as(us_county, "SpatialPolygonsDataFrame")
 
 # looks good; going to save this version of the shapefile
 writeOGR(obj = us_county, dsn = "./data/us_county", layer = "us_county",
-  driver = "ESRI Shapefile")
+  driver = "ESRI Shapefile", overwrite_layer = T)
