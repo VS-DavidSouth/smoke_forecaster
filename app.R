@@ -20,7 +20,7 @@ library(rgdal) # read shapefile
 poly_path <- "./data/smk_poly"
 poly_layer <- "smk_poly"
 
-# read polygon
+# read bluesky forecast polygon
 smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
 
 # set upper bound to 250
@@ -48,6 +48,13 @@ pal_fire <- colorFactor(
   palette = c("red", "green"),
   levels = c("WF", "RX")
   )
+
+# read county polygon (commenting out now; slows down app)
+# us_poly_path <- "./data/us_county"
+# us_poly_layer <- "us_county"
+# 
+# # read us polygon
+# us_county <- readOGR(dsn = us_poly_path, layer = us_poly_layer)
 
 # shiny dash board ui ----
 # note: 7/14/2017: I like the dashboard layout, but it may be better to define
@@ -106,7 +113,9 @@ server <- (function(input, output){
       # add fire locaiton icons
       addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
         lng = fire_locations$longitude, color = ~pal_fire(type),
-        radius = 0.5)
+        radius = 0.5) #%>% 
+      # add county shapefile (all counties slow down app a lot)
+      #addPolygons(data = us_county, weight = 1, smoothFactor = 5)
 
   })# end base leaflet
   
@@ -114,24 +123,26 @@ server <- (function(input, output){
   observeEvent(input$date_smoke,{
   # set index as 1 or 2 for easier index
   layer_name <- as.character(input$date_smoke)
-  # define smoke label values
+  # define reactive label values of smoke concentrations and relative risks
+  vals <- reactive({getElement(smk_forecast@data, layer_name)})
   # Smoke Concentration: value ug/m^3 \return
   # Relative Increase in Risk: value %
   pm_label <- sprintf(paste0(
     "<strong>Smoke Concentration: %g <span>&#181;</span>g/m<sup>3</sup></strong>",
-    "<br> Respiratory Relative Risk: %g"), 
+    "<br> Respiratory Relative Risk: %g",
+    "<br> Asthma Relative Risk: %g"), 
     # number for smoke concentration
-    round(smk_forecast@data$layer_1,1), 
-    # number for relative risk
-    round(exp(smk_forecast@data$layer_1/10*0.0507),2))%>% 
+    round(vals(),1),
+    # number for relative risk respiratory
+    round(exp(vals()/10*0.0507),2),
+    # number for relative risk asthma
+    round(exp(vals()/10*0.0733),2)) %>% 
     lapply(htmltools::HTML)
 
-
-  # reactive polygon layer
-  vals <- reactive({getElement(smk_forecast@data, layer_name)})
-    
   # call proxy map
   leafletProxy(mapId="map") %>%
+    # clear first polygon layer
+    clearShapes() %>% 
     # add polygon 
       addPolygons(data = smk_forecast, 
         color = "tranparent", 
