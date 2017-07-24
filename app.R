@@ -161,7 +161,6 @@ server <- (function(input, output){
   
 }) # end server function
 
-
 # launch shiny app (this is necessary for running on server)
 shinyApp(ui = ui, server = server)
 
