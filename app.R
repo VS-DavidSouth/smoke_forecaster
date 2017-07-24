@@ -84,7 +84,7 @@ body <- dashboardBody(
       ), 
       column(width = 10, 
         # initialize map
-        box(leafletOutput("map", width = "500", height="400"))
+        box(leafletOutput("map", width = "600", height="400"))
       )
     )# end fluid row
   )# end dashboard body
@@ -100,20 +100,22 @@ server <- (function(input, output){
   output$map <- renderLeaflet({
     leaflet() %>% 
       # call map layer
-      addTiles() %>% 
+      addTiles(group = "Base Map") %>% 
       # set bounds of map
-      fitBounds(lng1=-100, lat1=50, lng2=-90, lat2=25) %>% 
+      fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
       # set a box that defines the dimensions of bluesky forecast
-      addRectangles(lng1=-125, lat1=50, lng2=-67, lat2=25,
-        fillColor = "transparent", color = "blue") %>%
-      # add legend for smoke values
-      addLegend(pal=pal, values=c(0, 250), 
-        title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-                position = "bottomleft") %>% 
+      addRectangles(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975,
+        fillColor = "transparent", color = "black", weight = 2, 
+        group = "Blue Sky Extent") %>%
       # add fire locaiton icons
       addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
-        lng = fire_locations$longitude, color = ~pal_fire(type),
-        radius = 0.5) #%>% 
+                       lng = fire_locations$longitude, color = ~pal_fire(type),
+                       radius = ~sqrt(area/100), fill=F, weight = 0.5,
+                       group = "Fire Locations") %>% 
+      # add legend for smoke values
+      addLegend(pal=pal, values=c(0, 250), group = "Legend",
+        title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
+                position = "bottomleft") 
       # add county shapefile (all counties slow down app a lot)
       #addPolygons(data = us_county, weight = 1, smoothFactor = 5)
 
@@ -142,9 +144,9 @@ server <- (function(input, output){
   # call proxy map
   leafletProxy(mapId="map") %>%
     # clear first polygon layer
-    clearShapes() %>% 
+    removeShape(mapId = "map", layerId = "Smoke") %>% 
     # add polygon 
-      addPolygons(data = smk_forecast, 
+      addPolygons(data = smk_forecast, layerId = "Smoke",
         color = "tranparent", 
         fillColor = ~pal(vals()), 
         weight = 1, smoothFactor = 1,
@@ -164,4 +166,4 @@ server <- (function(input, output){
 # launch shiny app (this is necessary for running on server)
 shinyApp(ui = ui, server = server)
 
-
+?clearShapes

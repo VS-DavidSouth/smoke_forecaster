@@ -39,9 +39,10 @@ county_id <- as.character(sort(us_county@data$COUNTYFP))
 # Parallel computing of intersections ------------------------------------------
 # calculating overlap between the bluesky grid cells and counties 
 # creating empty large matrix of 3108 counties by 94068 grid cells
-# bs_county_proportion <- matrix(nrow=3108, ncol=94068, byrow=T,
-#   dimnames = list(county_id, bs_id))
+bs_county_proportion <- matrix(nrow=3108, ncol=94068, byrow=T,
+   dimnames = list(county_id, bs_id))
 
 # try a much smaller matrix to see if it works
 plot(us_county)
 plot(bluesky_grid, add=T)
+# something seems off about the projection...
