@@ -10,6 +10,9 @@
 library(rgdal)
 library(rgeos)
 # libraries to run in parallel
+library(parallel)
+library(doParallel)
+
 
 # load wrfgrid polygon ----
 # define relative path to polygon file
