@@ -27,6 +27,12 @@ smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
 smk_forecast[smk_forecast$layer_1 >= 250, ] <- 249
 smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 
+# default leaflet projection
+grs80 <- paste0("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs")
+
+test <- spTransform(smk_forecast, CRS(grs80))  
+test
+
 # define color bin for layer ----
 # going with a bin since it will be easier to handle extreme colors
 bin <- c(0, 10, 20, 30, 40, 50, 100, 250)
@@ -93,29 +99,30 @@ body <- dashboardBody(
 # ui function  
 ui <- dashboardPage(head,side,body, skin = "black") # dashboard header, side, and body
 
-# server section ----
+# server section ---- 
+# consider adding a session function if I want to know statistics
 server <- (function(input, output){
   
   # add base leaflet map
   output$map <- renderLeaflet({
     leaflet() %>% 
       # call map layer
-      addTiles(group = "Base Map") %>% 
+      addTiles() %>% 
       # set bounds of map
       fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
-      # set a box that defines the dimensions of bluesky forecast
-      addRectangles(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975,
-        fillColor = "transparent", color = "black", weight = 2, 
-        group = "Blue Sky Extent") %>%
       # add fire locaiton icons
       addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
-                       lng = fire_locations$longitude, color = ~pal_fire(type),
-                       radius = ~sqrt(area/100), fill=F, weight = 0.5,
-                       group = "Fire Locations") %>% 
+        lng = fire_locations$longitude, color = ~pal_fire(type),
+        radius = ~sqrt(area/100), fill=F, weight = 0.5) %>% 
       # add legend for smoke values
-      addLegend(pal=pal, values=c(0, 250), group = "Legend",
+      addLegend(pal=pal, values=c(0, 250), 
         title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
                 position = "bottomleft") 
+      # trying layer control (don't have a use for it now)
+      # addLayersControl(overlayGroups = "Smoke", #baseGroups = c("Base Map",
+      #   #"Blue Sky Extent", "Fire Locations", "Legend"),
+      #   options = layersControlOptions(collapsed = F))
+    
       # add county shapefile (all counties slow down app a lot)
       #addPolygons(data = us_county, weight = 1, smoothFactor = 5)
 
@@ -140,24 +147,23 @@ server <- (function(input, output){
     # number for relative risk asthma
     round(exp(vals()/10*0.0733),2)) %>% 
     lapply(htmltools::HTML)
-
+  
   # call proxy map
   leafletProxy(mapId="map") %>%
-    # clear first polygon layer
-    removeShape(mapId = "map", layerId = "Smoke") %>% 
-    # add polygon 
-      addPolygons(data = smk_forecast, layerId = "Smoke",
-        color = "tranparent", 
-        fillColor = ~pal(vals()), 
-        weight = 1, smoothFactor = 1,
-        fillOpacity = 0.5,
+    clearShapes() %>% 
+    # set a box that defines the dimensions of bluesky forecast
+    addRectangles(lng1=-130.0,lng2= -59.95, lat1=22.5, lat2=52.5,
+                  fillColor = "transparent", color = "black", weight = 2) %>%
+    # add smoke polygon 
+      addPolygons(data = smk_forecast, color = "tranparent", 
+        fillColor = ~pal(vals()), weight = 1, smoothFactor = 1, fillOpacity = 0.5, 
         # add highlight option
-        highlight = highlightOptions(
-          weight = 5, color = "blue", bringToFront = T, fillOpacity = 0.8),
+        highlight = highlightOptions(weight = 5, color = "blue", 
+          bringToFront = T, fillOpacity = 0.8),
         # add smoke pm values
         label = pm_label,
         labelOptions = labelOptions(style = list("font-weight" = "normal", 
-          padding = "3px 8px"), textsize = "12px", direction = "auto")
+          padding = "3px 8px"), textsize = "12px", direction = "auto") 
       )
   }) # end reactive layer
   
@@ -166,4 +172,4 @@ server <- (function(input, output){
 # launch shiny app (this is necessary for running on server)
 shinyApp(ui = ui, server = server)
 
-?clearShapes
+
