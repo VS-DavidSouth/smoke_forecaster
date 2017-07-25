@@ -91,8 +91,8 @@ clusterCall(cl, function() library(rgeos))
 # since I have another foreach loop, I need to load foreach on the clusters
 clusterExport(cl, "county_poly_list", envir = .GlobalEnv)
 clusterExport(cl, "bs_poly_list", envir = .GlobalEnv)
-clusterExport(cl, "z", envir = .GlobalEnv)
-clusterExport(cl, "w", envir = .GlobalEnv)
+clusterExport(cl, "c", envir = .GlobalEnv)
+clusterExport(cl, "g", envir = .GlobalEnv)
 
 # start timing
 start <- proc.time()
