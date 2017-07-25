@@ -108,7 +108,7 @@ int_fun <- function(x,y){
 }
 
 # register parallel list object "proportion"
-proportion <- mcmapply(intersect_func, c, g)
+proportion <- mcmapply(int_fun, c, g)
 # end time
 stop <- proc.time() - start
 stop
