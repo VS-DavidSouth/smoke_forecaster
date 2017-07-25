@@ -25,7 +25,8 @@ bluesky_grid <- readOGR(dsn = poly_path, layer = poly_layer)
 # assign a grid id to each bluesky cell (i could do this in the other step)
 bluesky_grid$id <- as.character(seq(1:94068))
 # save bluesky grid ids as a vector (not sure it needs to be character or numeric)
-bs_id <- sort(bluesky_grid@data$id)
+bs_id <- as.character(bluesky_grid@data$id)
+
 # reordering variables just because
 bluesky_grid <- bluesky_grid[,2:1]
 
@@ -48,7 +49,7 @@ county_id <- as.character(sort(us_county@data$GEOID))
 
 # define function to output seperate countis in a list
 # vector of state/county fips fed in to function
-co_poly_func <- function(x){
+co_poly_fun <- function(x){
   # name of county
   county_name <- as.character(x) 
   # limit shapefile to particular county
@@ -58,7 +59,7 @@ co_poly_func <- function(x){
 }
 
 # define function to output seperate bluesky grid in a list
-bs_poly_func <- function(x){
+bs_poly_fun <- function(x){
   # name of grid
   grid_name <- as.character(x)
   # output bluesky grid
@@ -68,13 +69,14 @@ bs_poly_func <- function(x){
 }
 
 # create list of individual county polygons
-county_poly_list <- lapply(county_id, co_poly_func)
+county_poly_list <- lapply(county_id, co_poly_fun)
 # create list of individual blue sky polygons
-bs_poly_list <- lapply(bs_id, bs_poly_func)
+bs_poly_list <- lapply(bs_id, bs_poly_fun)
 
-# empty numbers list
-z <- rep(1:3108, each=94068)
-w <- rep(1:94068, each=3108)
+# numbers sequence of order to subset county (c) and grid (g)
+c <- rep(1:3108, each=94068)
+g <- rep(1:94068, times=3108)
+
 
 # setup for parallel computing before for loop ---------------------------------
 cores <- detectCores() # 48
@@ -84,6 +86,7 @@ registerDoParallel(cl)
 clusterCall(cl, function() library(rgdal))
 clusterCall(cl, function() library(sp))
 clusterCall(cl, function() library(rgeos))
+
 
 # since I have another foreach loop, I need to load foreach on the clusters
 clusterExport(cl, "county_poly_list", envir = .GlobalEnv)
@@ -95,7 +98,7 @@ clusterExport(cl, "w", envir = .GlobalEnv)
 start <- proc.time()
 
 # define function to find intersection between each object in polygons lists
-intersect_func <- function(x,y){
+int_fun <- function(x,y){
   # find polygon of intersection
   county_bs_intersect <- gIntersection(county_poly_list[x][[1]], 
                                        bs_poly_list[y][[1]])
@@ -105,7 +108,7 @@ intersect_func <- function(x,y){
 }
 
 # register parallel list object "proportion"
-proportion <- mcmapply(intersect_func, z, w)
+proportion <- mcmapply(intersect_func, c, g)
 # end time
 stop <- proc.time() - start
 stop
@@ -127,16 +130,44 @@ write_csv(county_bs_proportion_df, paste0(write_path))
 
 # test of interseciton code ------
 # 
-# mt_list <- lapply()
 # # test case: trying out just montana county with a bs grid 30057 ---
-# mt_poly <- us_county[us_county$GEOID == "30057", ]
-# bs_test_poly <- bluesky_grid[bluesky_grid$id == "22114", ]
+# mt_poly <- us_county[us_county$GEOID == "30057" |
+#                      us_county$GEOID == "30001" |
+#                      us_county$GEOID == "30011", ]
+# bs_test_poly <- bluesky_grid[bluesky_grid$id == "22114" |
+#                              bluesky_grid$id == "1", ]
 # 
-# plot(mt_poly)
-# plot(bs_test_poly, add = T)
+# # plot to check
+# plot(bs_test_poly)
+# plot(mt_poly, add = T)
+# 
 # # test intersection polygon
-# test <- gIntersection(SpatialPolygons(mt_poly@polygons),SpatialPolygons(bs_test_poly@polygons))
+# test <- gIntersection(SpatialPolygons(mt_poly@polygons[1]),
+#                       SpatialPolygons(bs_test_poly@polygons[2]))
+# is.null(test)
 # # need to divide by polygon
-#gArea(test)/gArea(SpatialPolygons(bs_test_poly@polygons))
-# g area of cell 22114 should be 0.862
-     
+# gArea(test)/gArea(SpatialPolygons(bs_test_poly@polygons[2]))
+# # g area of cell 22114 and county 30057 should be 0.862
+# # g area of cell 22114 and county 30001 should be 0.14
+# 
+# # trying mapply
+# # create list of individual county polygons
+# county_poly_list <- lapply(c("30057", "30001", "30011"), co_poly_fun)
+# # create list of individual blue sky polygons
+# bs_poly_list <- lapply(c("22114", "1"), bs_poly_fun)
+# 
+# int_fun
+# summary(county_poly_list[3])
+# int_fun
+# 
+# # when using m apply or mcmapply, x vector for county polygons needs to use each
+# x <- rep(1:3, each = 2)
+# y <- rep(1:2, times = 3)
+# 
+# test_prop <- mapply(int_fun, x, y)
+# test_prop
+# 
+# test_mat <- matrix(test_prop, nrow=3, ncol=2, byrow=T,
+# dimnames = list(c("30057", "30001", "30011"), c("22114", "1")))
+# 
+# test_mat
