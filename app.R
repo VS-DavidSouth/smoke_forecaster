@@ -37,7 +37,9 @@ test
 # going with a bin since it will be easier to handle extreme colors
 bin <- c(0, 10, 20, 30, 40, 50, 100, 250)
 pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
-                    na.color = "transparent")
+                  na.color = "transparent")
+
+# add another legend for relative risk
 
 # read in saved R dates ----
 load("./data/date_label.RData")
@@ -159,7 +161,7 @@ server <- (function(input, output){
         fillColor = ~pal(vals()), weight = 1, smoothFactor = 1, fillOpacity = 0.5, 
         # add highlight option
         highlight = highlightOptions(weight = 5, color = "blue", 
-          bringToFront = T, fillOpacity = 0.8),
+          bringToFront = T, fillOpacity = 0.85),
         # add smoke pm values
         label = pm_label,
         labelOptions = labelOptions(style = list("font-weight" = "normal", 
