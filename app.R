@@ -28,7 +28,8 @@ smk_forecast[smk_forecast$layer_1 >= 250, ] <- 249
 smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 
 # default leaflet projection
-grs80 <- paste0("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs")
+# commented out for now
+#grs80 <- paste0("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs")
 
 #test <- spTransform(smk_forecast, CRS(grs80))  
 #test
@@ -39,7 +40,16 @@ bin <- c(0, 10, 20, 30, 40, 50, 100, 250)
 pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
                   na.color = "transparent")
 
-# add another legend for relative risk
+# add another legend for relative risk resp
+resp_bin <- round(exp((bin/10)*0.0507),2)
+# resp pal
+resp_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(resp_bin)), 
+                     bins = resp_bin, na.color = "transparent")
+# asthma
+asthma_bin <- round(exp((bin/10)*0.0733),2)
+# asthma pal 
+asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
+                     bins = asthma_bin, na.color = "transparent")
 
 # read in saved R dates ----
 load("./data/date_label.RData")
@@ -119,7 +129,18 @@ server <- (function(input, output){
       # add legend for smoke values
       addLegend(pal=pal, values=c(0, 250), 
         title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-                position = "bottomleft") 
+                position = "topleft") %>% 
+      # add respiratory legend
+      addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
+        title = htmltools::HTML("Respiratory <br> Relative Risk"),
+        position = "bottomright") %>% 
+      # add respiratory legend
+      addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
+        title = htmltools::HTML("Asthma <br> Relative Risk"),
+        position = "bottomright")
+    
+
+    
       # trying layer control (don't have a use for it now)
       # addLayersControl(overlayGroups = "Smoke", #baseGroups = c("Base Map",
       #   #"Blue Sky Extent", "Fire Locations", "Legend"),
