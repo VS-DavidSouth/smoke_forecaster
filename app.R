@@ -30,8 +30,8 @@ smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 # default leaflet projection
 grs80 <- paste0("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs")
 
-test <- spTransform(smk_forecast, CRS(grs80))  
-test
+#test <- spTransform(smk_forecast, CRS(grs80))  
+#test
 
 # define color bin for layer ----
 # going with a bin since it will be easier to handle extreme colors
