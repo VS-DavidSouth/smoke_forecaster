@@ -81,31 +81,18 @@ pal_fire <- colorFactor(
 head <- dashboardHeader(title = "Beta Smoke ForecasteR",
   titleWidth = 450)
 # side bar
-side <- dashboardSidebar(disable = T)
+side <- dashboardSidebar(
+  radioButtons("date_smoke", label = h2("Date to Forecast"), 
+               choices = date_list, selected = "layer_1")
+  ) # end side bar
+
 # body
 body <- dashboardBody(
-    # set up two rows
-    fluidRow(
-      # lefthand side radio button
-      # adding a radio button for today's or tomorrow's forecast
-      column(width = 2, 
-        box(width = NULL, color = "black",
-          radioButtons("date_smoke", label = h2("Date to Forecast"), 
-          choices = date_list, selected = "layer_1"), hr()
-             ), # end box
-             # message
-        p(class = "text-muted", paste("Smoke forecast uses BlueSky output",
-        "and estimates daily average smoke concentrations for today and tomorrow.",
-        "Since this is an early stage beta, the layout is crude and subject to changing",
-        "There are still a lot of features planned including: a health component",
-        "integration with daily AQS values, location of fires, etc."))
-      ), 
-      column(width = 10, 
-        # initialize map
-        box(leafletOutput("map", width = "600", height="400"))
-      )
-    )# end fluid row
-  )# end dashboard body
+  # set tag style
+  tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
+  leafletOutput("map")
+
+)# end dashboard body
   
   
 # ui function  
@@ -131,16 +118,13 @@ server <- (function(input, output){
         title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
                 position = "topleft") %>% 
       # add respiratory legend
+      addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
+                title = htmltools::HTML("Asthma <br> Relative Risk"),
+                position = "bottomleft") %>% 
+      # add respiratory legend
       addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
         title = htmltools::HTML("Respiratory <br> Relative Risk"),
-        position = "bottomright") %>% 
-      # add respiratory legend
-      addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
-        title = htmltools::HTML("Asthma <br> Relative Risk"),
-        position = "bottomright")
-    
-
-    
+        position = "bottomleft") 
       # trying layer control (don't have a use for it now)
       # addLayersControl(overlayGroups = "Smoke", #baseGroups = c("Base Map",
       #   #"Blue Sky Extent", "Fire Locations", "Legend"),
