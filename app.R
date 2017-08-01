@@ -116,15 +116,15 @@ server <- (function(input, output){
       # add legend for smoke values
       addLegend(pal=pal, values=c(0, 250), 
         title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-                position = "topleft") %>% 
+                position = "bottomleft") %>% 
       # add respiratory legend
       addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
                 title = htmltools::HTML("Asthma <br> Relative Risk"),
-                position = "bottomleft") %>% 
+                position = "bottomright") %>% 
       # add respiratory legend
       addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
         title = htmltools::HTML("Respiratory <br> Relative Risk"),
-        position = "bottomleft") 
+        position = "bottomright") 
       # trying layer control (don't have a use for it now)
       # addLayersControl(overlayGroups = "Smoke", #baseGroups = c("Base Map",
       #   #"Blue Sky Extent", "Fire Locations", "Legend"),
