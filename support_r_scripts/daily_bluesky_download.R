@@ -16,7 +16,7 @@ library(raster) # easier to manipulate than netcdf file
 library(rgdal)
 
 # set working directory for this script
-setwd("/srv/shiny-server/smoke_forecaster/")
+setwd("/srv/www/rgan/smoke_forecaster/")
 
 # download bluesky daily output -----------------------------------------------
 
