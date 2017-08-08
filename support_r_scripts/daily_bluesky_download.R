@@ -15,8 +15,10 @@ library(stringr)
 library(raster) # easier to manipulate than netcdf file
 library(rgdal)
 
-# set working directory for this script
-setwd("/srv/www/rgan/smoke_forecaster/")
+# set up working directory
+setwd("/srv/www/rgan/smoke_forecaster")
+# define path to repository for the server for writing files
+home_path <- paste0("/srv/www/rgan/smoke_forecaster")
 
 # download bluesky daily output -----------------------------------------------
 
@@ -30,8 +32,8 @@ todays_date <- paste0(gsub("-","", Sys.Date()), "00")
 fire_url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
   "GFS-0.15deg/", todays_date, "/forecast/data/fire_locations.csv")
 
-download.file(url = fire_url_path, destfile = "./data/fire_locations.csv",
-              mode = "wb")
+download.file(url = fire_url_path, destfile = paste0(home_path,
+  "/data/fire_locations.csv"), mode = "wb")
 
 # download smoke dispersion output ----
 # define URL path for smoke dispersion
@@ -39,9 +41,10 @@ url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
   "GFS-0.15deg/", todays_date, "/forecast/data/smoke_dispersion.nc")
 
 # download a netcdf file to work with
-download.file(url = url_path, destfile = "./data/smoke_dispersion.nc", mode = "wb")
+download.file(url = url_path, destfile = paste0(home_path,
+                "/data/smoke_dispersion.nc"), mode = "wb")
 
-fileName <- "./data/smoke_dispersion.nc"
+fileName <- paste0(home_path,"/data/smoke_dispersion.nc")
 
 # netcdf file manipulaton ------------------------------------------------------
 nc <- nc_open(fileName)
@@ -135,8 +138,7 @@ bs2v2(fileName)
 list.files(pattern='*.nc')
 
 # working with the raster brick of the nc file
-#nc_path <- "/srv/shiny-server/smoke_forecaster/smoke_dispersion_v2.nc"
-nc_path <- "./data/smoke_dispersion_v2.nc"
+nc_path <- paste0(home_path, "/data/smoke_dispersion_v2.nc")
 # brick or stack 
 smk_brick <- brick(nc_path)
 
@@ -170,7 +172,7 @@ next_day_date <- format(as.POSIXct(next_day_date, origin="1970-1-1", tz="GMT"),
 # a changing date
 date_labels <- c(same_day_date, next_day_date)
 # saving character string of dates
-save(date_labels, file = "./data/date_label.RData")
+save(date_labels, file = paste0(home_path,"/data/date_label.RData"))
 
 # create raster brick and create spatial polygon ----
 # make raster brick of same_day and next_day mean smoke
@@ -196,7 +198,7 @@ rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
      next_day_mean_smk, smoke_stack)
 
 # write smoke polygon ----
-writeOGR(obj = smk_poly, dsn = "./data/smk_poly", layer = "smk_poly", 
-         driver = "ESRI Shapefile", overwrite_layer = T)
+writeOGR(obj = smk_poly, dsn = paste(home_path,"/data/smk_poly"), 
+         layer = "smk_poly", driver = "ESRI Shapefile", overwrite_layer = T)
 
 
