@@ -198,7 +198,7 @@ rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
      next_day_mean_smk, smoke_stack)
 
 # write smoke polygon ----
-writeOGR(obj = smk_poly, dsn = paste(home_path,"/data/smk_poly"), 
+writeOGR(obj = smk_poly, dsn = paste0(home_path,"/data/smk_poly"), 
          layer = "smk_poly", driver = "ESRI Shapefile", overwrite_layer = T)
 
 
