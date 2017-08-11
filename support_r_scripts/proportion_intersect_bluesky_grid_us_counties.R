@@ -79,7 +79,7 @@ g <- rep(1:94068, times=3108)
 
 
 # setup for parallel computing before for loop ---------------------------------
-cores <- detectCores() # 48
+cores <- detectCores() 
 cl <- makeCluster(cores) # use all cores on the vet cluster
 registerDoParallel(cl)
 # load packages on each cluster
@@ -123,12 +123,9 @@ county_bs_proportion_mat <- matrix(proportion, nrow=3108, ncol=94068, byrow=T,
 county_bs_proportion_df <- data.frame(county_bs_proportion_mat)
 
 write_path <- paste0('./data/county_bluesky_prop.csv')
-write_csv(county_bs_proportion_df, paste0(write_path))
+write.csv(county_bs_proportion_df, file = paste0(write_path))
 
-
-
-
-# test of interseciton code ------
+# test of intersection code ------
 # 
 # # test case: trying out just montana county with a bs grid 30057 ---
 # mt_poly <- us_county[us_county$GEOID == "30057" |
@@ -145,10 +142,10 @@ write_csv(county_bs_proportion_df, paste0(write_path))
 # test <- gIntersection(SpatialPolygons(mt_poly@polygons[1]),
 #                       SpatialPolygons(bs_test_poly@polygons[2]))
 # is.null(test)
-# # need to divide by polygon
+ # need to divide by polygon
 # gArea(test)/gArea(SpatialPolygons(bs_test_poly@polygons[2]))
-# # g area of cell 22114 and county 30057 should be 0.862
-# # g area of cell 22114 and county 30001 should be 0.14
+ # g area of cell 22114 and county 30057 should be 0.862
+ # g area of cell 22114 and county 30001 should be 0.14
 # 
 # # trying mapply
 # # create list of individual county polygons
