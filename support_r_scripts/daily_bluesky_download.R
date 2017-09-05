@@ -29,8 +29,9 @@ todays_date <- paste0(gsub("-","", Sys.Date()), "00")
 # download fire locations from bluesky runs ----
 # note right now I download only the location file, but I may work in
 # fire information in the future. looks like it's contained in the json file
+# Note: changed "forecast" to "combined" estimate on Sept 5 2017
 fire_url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
-  "GFS-0.15deg/", todays_date, "/forecast/data/fire_locations.csv")
+  "GFS-0.15deg/", todays_date, "/combined/data/fire_locations.csv")
 
 download.file(url = fire_url_path, destfile = paste0(home_path,
   "/data/fire_locations.csv"), mode = "wb")
@@ -38,7 +39,7 @@ download.file(url = fire_url_path, destfile = paste0(home_path,
 # download smoke dispersion output ----
 # define URL path for smoke dispersion
 url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
-  "GFS-0.15deg/", todays_date, "/forecast/data/smoke_dispersion.nc")
+  "GFS-0.15deg/", todays_date, "/combined/data/smoke_dispersion.nc")
 
 # download a netcdf file to work with
 download.file(url = url_path, destfile = paste0(home_path,
