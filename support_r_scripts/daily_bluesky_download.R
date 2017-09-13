@@ -150,22 +150,22 @@ smk_brick <- brick(nc_path)
 # calculate same day daily average ----
 # create raster layer of same day mean value
 # note Sept 13: changing to handle carry over smoke
-same_day_smk <- smk_brick[[1:29]]
+same_day_smk <- smk_brick[[1:31]]
 # create raster layer of mean value
 same_day_mean_smk <- mean(same_day_smk)
 # extract the date without timestamp (taking element date 29 frome 1:29)
-same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[20]
+same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[15]
 # assign date time stamp in a format of month_day_year to bind with name
 same_day_date <- format(as.POSIXct(same_day_date, origin="1970-1-1", tz="GMT"),
                     format = "%b %d %Y")
 
 # calculate next day daily average -----
-# subset raster brick to the 30th to 54th layer (next day MST)
-next_day_smk <- smk_brick[[30:54]]
+# subset raster brick to the 32th to 56th layer (next day MST)
+next_day_smk <- smk_brick[[32:56]]
 # create raster layer of daily mean value
 next_day_mean_smk <- mean(next_day_smk)
 # extract next day's date
-next_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[45]
+next_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[44]
 # assign date time stamp in a format of month_day_year to bind with name
 next_day_date <- format(as.POSIXct(next_day_date, origin="1970-1-1", tz="GMT"),
                         format = "%b %d %Y")
