@@ -195,7 +195,7 @@ smk_poly <- rasterToPolygons(smoke_stack)
 
 # subsetting smk_polygon to only those with values > 5 
 # to make polygon file smaller and easier to project
-# smk_poly <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
+smk_poly <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
 
 # remove raster files to save space
 rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
