@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Title: App script for smoke forecaster shiny app
-# Author: Ryan Gan and Steve Brey
-# Date Created: 6/17/17
+# Author: Ryan Gan 
+# Date Created: 2017-06-17
 # R Version 3.4.0 
 # ------------------------------------------------------------------------------
 
@@ -82,52 +82,52 @@ pal_fire <- colorFactor(
 # note: 7/14/2017: I like the dashboard layout, but it may be better to define
 # the three elemnts of the dashboard outside the ui.
 # header
-head <- dashboardHeader(title = "Beta Smoke ForecasteR",
-  titleWidth = 450)
+head <- dashboardHeader(title = "Smoke ForecasteR (beta)",
+  titleWidth = 300)
+
 # side bar
 side <- dashboardSidebar(
-  radioButtons("date_smoke", label = h2("Date to Forecast"), 
+    # reactive sidebar
+    radioButtons("date_smoke", label = h2("Date to Forecast"), 
                choices = date_list, selected = "layer_1")
-  ) # end side bar
+) # end side bar
 
 # body
 body <- dashboardBody(
   # set tag style
   tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
   leafletOutput("map")
-
 )# end dashboard body
-  
-  
-# ui function  
-ui <- dashboardPage(head,side,body, skin = "black") # dashboard header, side, and body
+
+
+# ui function with dashboard header, side, and body
+ui <- dashboardPage(head,side,body, skin = "black") 
 
 # server section ---- 
 # consider adding a session function if I want to know statistics
 server <- (function(input, output){
-  
   # add base leaflet map
   output$map <- renderLeaflet({
-    leaflet() %>% 
-      # call map layer
-      addTiles() %>% 
-      # set bounds of map
-      fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
-      # add fire locaiton icons
-      addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
-        lng = fire_locations$longitude, color = ~pal_fire(type),
-        radius = ~sqrt(area/100), fill=F, weight = 0.5) %>% 
-      # add legend for smoke values
-      addLegend(pal=pal, values=c(0, 250), 
-        title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
+      leaflet() %>% 
+        # call map layer
+        addTiles() %>% 
+        # set bounds of map
+        fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
+        # add fire locaiton icons
+        addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
+          lng = fire_locations$longitude, color = ~pal_fire(type),
+          radius = ~sqrt(area/100), fill=F, weight = 0.5) %>% 
+        # add legend for smoke values
+        addLegend(pal=pal, values=c(0, 250), 
+          title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
                 position = "bottomleft") %>% 
-      # add respiratory legend
-      addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
+        # add respiratory legend
+        addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
                 title = htmltools::HTML("Asthma <br> Relative Risk"),
                 position = "bottomright") %>% 
-      # add respiratory legend
-      addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
-        title = htmltools::HTML("Respiratory <br> Relative Risk"),
+        # add respiratory legend
+        addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
+          title = htmltools::HTML("Respiratory <br> Relative Risk"),
         position = "bottomright") 
       # trying layer control (don't have a use for it now)
       # addLayersControl(overlayGroups = "Smoke", #baseGroups = c("Base Map",
