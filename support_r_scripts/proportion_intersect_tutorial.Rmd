@@ -126,13 +126,26 @@ ggplot(la_county) +
 Try it out on the state.
 
 ```{r grid intersect for cali}
-grid_area <- st_intersection(st_geometry(cali_grid), st_geometry(cali_county))
-prop_int2 <- as.numeric(st_area(grid_area)/st_area(cali_grid))
+grid_area2 <- st_intersection(st_geometry(cali_grid), st_geometry(cali_county))
+
+ggplot(grid_area2) + geom_sf()
+
+
+prop_int2 <- as.numeric(st_area(grid_area2)/st_area(cali_grid))
 
 test_tibble <- as.tibble(prop_int2)
 
 ggplot(test_tibble, aes(x=prop_int2)) + geom_density()
+
+# bind proportions back in with cali grid
+cali_grid$proportion <- prop_int2
+
+# plot
+ggplot(cali_county) + 
+  geom_sf() +
+  geom_sf(data=cali_grid, aes(), alpha = 0.0) +
+  theme_bw()
 ```
 
-I think it works, but I can see a problem in that I need to find a way to only fill cells for the grid and county and then all other cells need to be 0. May be best to go by each county and calculate?
+I think it works, but I can see a problem in that I need to find a way to only fill cells for the grid and county and then all other cells need to be 0. May be best to go by each county and calculate? Kind of looks that way as I think some grids that intersect multiple counties create sf objects with multiple polygons and then it can't bind back in to the original grid.
 
