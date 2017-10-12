@@ -83,7 +83,7 @@ prop_intersect <- as.numeric(st_area(intersect_sf)/st_area(la_grid[1,]))
 prop_intersect
 ```
 
-Now we want to use the apply family of functions over all grids in the county (and for all counties in the state). The first step is to create a function that pulls out each unique sf object and puts it in a list. We'll eventually do this for all counties in a state.
+Since "sf" brings in polygons as simple features as a data frame instead of multiple little polygons as part of a larger polygon, that changes how I can calculate proportion intersect. It really is amazing and much faster.
 
 ```{r list functions}
 # output a list of grid id names
@@ -104,9 +104,7 @@ grid_poly_list <- lapply(grid_id, grid_poly_fun)
 
 Next we define our intersect function.
 
-```{r intersect function}
-
-
+```{r intersection}
 # sf might make this easier since each object comes in as a dataframe and not
 # a bunch of little polygons as part of a big polygon
 # find intersection of grid for the county
@@ -116,7 +114,25 @@ prop_int <- as.numeric(st_area(grid_area)/st_area(la_grid))
 # oh my god that's so much faster and easier
 
 # now I need to assign it back to the county shapefile
-
+la_grid$proportion <- prop_int
+prop_int
+# plot
+ggplot(la_county) + 
+  geom_sf() +
+  geom_sf(data=la_grid, aes(fill=proportion), alpha=0.7) +
+  theme_bw()
 ```
 
+Try it out on the state.
+
+```{r grid intersect for cali}
+grid_area <- st_intersection(st_geometry(cali_grid), st_geometry(cali_county))
+prop_int2 <- as.numeric(st_area(grid_area)/st_area(cali_grid))
+
+test_tibble <- as.tibble(prop_int2)
+
+ggplot(test_tibble, aes(x=prop_int2)) + geom_density()
+```
+
+I think it works, but I can see a problem in that I need to find a way to only fill cells for the grid and county and then all other cells need to be 0. May be best to go by each county and calculate?
 
