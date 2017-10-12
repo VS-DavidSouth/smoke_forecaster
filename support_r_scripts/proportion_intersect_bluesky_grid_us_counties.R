@@ -39,6 +39,12 @@ us_county <- readOGR(dsn = co_path, layer = co_layer)
 
 # save state/county ids (n = 3108) as a vector
 county_id <- as.character(sort(us_county@data$GEOID))
+plot(us_county)
+
+# I need to find a way to calculate chunks at a time. Maybe subset the state,
+# and then find the grid boxes that fall within or overlap with that state and
+# calculate? Then bind it all back together for the proportion intersect matrix.
+
 
 # Parallel computing of intersections ------------------------------------------
 # calculating overlap between the bluesky grid cells and counties 
