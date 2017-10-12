@@ -1,0 +1,122 @@
+---
+title: "Calculating Proportion Intersect for Objects in Shapefiles"
+author: "Ryan Gan"
+date: "10/12/2017"
+output: html_document
+---
+
+## Introduction and setup
+
+This is example code on the fastest and memory-efficient way I've found to calculate the intersection between two spatial polygons (shapefiles). The reason I wanted to do this was so that I could population weight PM~2.5~ values based on grid cells for a given politcal boundary, in this case, county. This is my first time taking the "sf" package for a go and I'm excited about it's potential. I'm not entirely sure how it's different, but I know it's suppose to be faster and use less memory that some other R spatial polygons.
+
+Let's read in the polygons for the Bluesky smoke forecasting grid and the polygons for United States counties (excluding Alaska and Hawaii).
+
+```{r setup}
+# trying out sf for the first time
+library(sf)
+# need the development version of ggplot2 
+library(ggplot2)
+# load wrfgrid polygon ----
+# define relative path to polygon file
+poly_path <- "./data/bluesky_grid"
+poly_layer <- "bluesky_grid"
+
+# read in bluesky grid
+bluesky_grid <- st_read(dsn = poly_path, layer = poly_layer)
+# the bluesky grid does not have an ID so we will assign each cell a number
+bluesky_grid$id <- as.numeric(seq(1:94068))
+# read county polygons
+us_county <- st_read(dsn = co_path, layer = co_layer)
+```
+
+Now that we've read in the two polygons, it looks like there are some unique features to the sf package vs some other packages like rgdal or rgeos. It looks like the imported simple features object contains more information than the simple polygon, which is cool. I haven't plotted the entire US and the Bluesky grid because it's hard to see, but I usually do this as a check.
+
+## Subsetting specific polygons
+
+In the past, we calculated the proportion of intersection between each county polygon and grid cell for one state, which worked fine. However, when we try to apply the same method to the entire US, we ran in to what I think were memory problems (stack overflow?), and we were never able to get our desired product, a matrix of the proportion intersect for each cell id and county id. This was on a relatively decent high-performance computer too running in parallel and definately wouldn't work on your standard desktop or laptop. To solve this problem, we'll subset each state and only the cell grids of that state, which should reduce our memory use substantially. We can save the matrix for each state, free up the memory used, and start again with a new state. We can then combine all the matrices from each state to get our desired matrix. 
+
+For this example, we'll take it to a much smaller scale: the state of California.
+
+We'll also check the plots of each object to make sure we have what we need.
+
+```{r california subset}
+# subset to california by FIPS code "06"
+cali_county <- us_county[us_county$STATEFP=="06", ]
+# subset the bluesky grid to  grid cells that intersect a california county
+cali_grid <- bluesky_grid[cali_county, ]
+# plot
+ggplot(cali_county) + 
+  geom_sf() +
+  geom_sf(data=cali_grid, aes(), alpha = 0.0) +
+  theme_bw()
+```
+
+Looks like we have all the grids we need for the state of California. Let's move on to the proportion of intersection between each county and grid in each state. 
+
+## Proportion intersect calcuations
+
+Before we apply a function to the whole state, we'll subset start small with one county and grids in that county. I do this for a couple reasons. The first is I can test if my code is working on a small subset on my laptop before moving it to the server. The second is that it is easy to scale it up and use *apply* functions to apply the formula for each grid and county (for the entire US, eventually). The last reason is that I'll check the final matrix for the grid ids for that particular county to make sure they line up with these calculations here.
+
+I'm going to pick Los Angeles county since it's small and has some islands. We can subset in the same way we did before.
+
+```{r orange county subset}
+# subset orange county by fips code
+la_county <- cali_county[cali_county$COUNTYFP=="037",]
+# subset grids to orange county
+la_grid <- cali_grid[la_county, ]
+# plot to check
+ggplot() + 
+  geom_sf(data = la_county) +
+  geom_sf(data=la_grid, alpha = 0.0) +
+  theme_bw()
+```
+
+Proportion intersection of one grid for the upper part of LA county.
+
+```{r proportion intersect}
+# first find the intersection between the two shapes
+intersect_sf <- st_intersection(la_county, la_grid[1,])
+# find the proportion intersect by subtracting the area of the intersection
+# by the area of the grid cell. as.numeric ditches the unit
+prop_intersect <- as.numeric(st_area(intersect_sf)/st_area(la_grid[1,]))
+# proportion of LA county in the grid 55299, which is the upper left hand corner 
+prop_intersect
+```
+
+Now we want to use the apply family of functions over all grids in the county (and for all counties in the state). The first step is to create a function that pulls out each unique sf object and puts it in a list. We'll eventually do this for all counties in a state.
+
+```{r list functions}
+# output a list of grid id names
+grid_id <- as.numeric(la_grid$id)
+
+lapply(grid_id, print)
+
+# define function to output seperate bluesky grid in a list
+grid_poly_fun <- function(x){
+  # name of grid
+  grid_name <- as.numeric(x)
+  # output bluesky grid
+  single_grid <- filter(bluesky_grid, id == grid_id)
+}
+# create list of individual blue sky polygons
+grid_poly_list <- lapply(grid_id, grid_poly_fun)
+```
+
+Next we define our intersect function.
+
+```{r intersect function}
+
+
+# sf might make this easier since each object comes in as a dataframe and not
+# a bunch of little polygons as part of a big polygon
+# find intersection of grid for the county
+grid_area <- st_intersection(st_geometry(la_grid),st_geometry(la_county))
+# caluclate proportion intersect 
+prop_int <- as.numeric(st_area(grid_area)/st_area(la_grid))
+# oh my god that's so much faster and easier
+
+# now I need to assign it back to the county shapefile
+
+```
+
+
