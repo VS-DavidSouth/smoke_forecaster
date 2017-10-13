@@ -1,5 +1,5 @@
 ---
-title: "Calculating Proportion Intersect for Objects in Shapefiles"
+title: "Calculating Proportion Intersect using Simple Features (sf)""
 author: "Ryan Gan"
 date: "10/12/2017"
 output: html_document
@@ -7,19 +7,24 @@ output: html_document
 
 ## Introduction and setup
 
-This is example code on the fastest and memory-efficient way I've found to calculate the intersection between two spatial polygons (shapefiles). The reason I wanted to do this was so that I could population weight PM~2.5~ values based on grid cells for a given politcal boundary, in this case, county. This is my first time taking the "sf" package for a go and I'm excited about it's potential. I'm not entirely sure how it's different, but I know it's suppose to be faster and use less memory that some other R spatial polygons.
+This is example code on using the relatively new "sf" simple features package. Perviously, I have used the sp, rgeos, and rgdal package for many spatial tasks/calculations. Use of sf allows for a faster and more memory-efficient way to perform spatial tasks. From what I can tell, the major difference is that a simple feature is more like a dataframe rather than a spatial polygon object. This would explain why it's more memory efficient. Another very attractive feature is that "sf" follows tidy principles for data manipulation and managment, and is compatible with the tidyverse. For this, I use the development version of ggplot2 to access the geom_sf feature. I expect "sf" and tidyverse to work even better together in the future.
 
-Let's read in the polygons for the Bluesky smoke forecasting grid and the polygons for United States counties (excluding Alaska and Hawaii).
+This document focuses on calculation of the intersection between two spatial polygons (shapefiles). The reason I want to calculation the intersection is so that I could population weight PM~2.5~ values based on grid cells for a given politcal boundary, in this case, county. This is my first time taking the "sf" package for a go and I'm excited about it's potential. 
+
+Let's read in the shapefile polygons for the Bluesky smoke forecasting grid and the polygons for United States counties (excluding Alaska and Hawaii).
 
 ```{r setup}
 # trying out sf for the first time
 library(sf)
-# need the development version of ggplot2 
-library(ggplot2)
+# note that you need the development version of ggplot2 
+library(tidyverse)
 # load wrfgrid polygon ----
 # define relative path to polygon file
 poly_path <- "./data/bluesky_grid"
 poly_layer <- "bluesky_grid"
+# county path
+co_path <- "./data/us_county"
+co_layer <- "us_county"
 
 # read in bluesky grid
 bluesky_grid <- st_read(dsn = poly_path, layer = poly_layer)
@@ -41,9 +46,12 @@ We'll also check the plots of each object to make sure we have what we need.
 
 ```{r california subset}
 # subset to california by FIPS code "06"
-cali_county <- us_county[us_county$STATEFP=="06", ]
+cali_county <- us_county[us_county$STATEFP=="06", ] %>% 
+  # making a FIPS ID that I'll use later
+  mutate(FIPS = paste0(STATEFP, COUNTYFP))
 # subset the bluesky grid to  grid cells that intersect a california county
 cali_grid <- bluesky_grid[cali_county, ]
+
 # plot
 ggplot(cali_county) + 
   geom_sf() +
@@ -59,7 +67,7 @@ Before we apply a function to the whole state, we'll subset start small with one
 
 I'm going to pick Los Angeles county since it's small and has some islands. We can subset in the same way we did before.
 
-```{r orange county subset}
+```{r la county subset}
 # subset orange county by fips code
 la_county <- cali_county[cali_county$COUNTYFP=="037",]
 # subset grids to orange county
@@ -85,22 +93,6 @@ prop_intersect
 
 Since "sf" brings in polygons as simple features as a data frame instead of multiple little polygons as part of a larger polygon, that changes how I can calculate proportion intersect. It really is amazing and much faster.
 
-```{r list functions}
-# output a list of grid id names
-grid_id <- as.numeric(la_grid$id)
-
-lapply(grid_id, print)
-
-# define function to output seperate bluesky grid in a list
-grid_poly_fun <- function(x){
-  # name of grid
-  grid_name <- as.numeric(x)
-  # output bluesky grid
-  single_grid <- filter(bluesky_grid, id == grid_id)
-}
-# create list of individual blue sky polygons
-grid_poly_list <- lapply(grid_id, grid_poly_fun)
-```
 
 Next we define our intersect function.
 
@@ -123,22 +115,42 @@ ggplot(la_county) +
   theme_bw()
 ```
 
-Try it out on the state.
+Try it out on the state. I don't think I can use purrr map functions yet. I'll use apply functions.
 
 ```{r grid intersect for cali}
-grid_area2 <- st_intersection(st_geometry(cali_grid), st_geometry(cali_county))
+head(cali_county)
+summary(la_county)
+# I had some problems feeding the sf object directly in to the function when I
+# tried to use the apply or map functions, which led me to think purrr and map
+# were not compatible yet. If I feed in a vector of the state/county fips,
+# this should work
 
-ggplot(grid_area2) + geom_sf()
+# tibble of just the grid_id to join data too
+prop_int_tibble <- cali_grid$id %>% 
+  tibble() %>% 
+  rename(grid_id = ".")
 
+# turning this in to a for loop because i'm annoyed
+for(i in 1:length(cali_county$FIPS)){
+  i <- 1
+  # subset county to find intersect
+  county <- slice(cali_county, i)
+  # extract fips number for variable name
+  fips_id <- paste0("fips_", county$FIPS)
+  # subset grid cells that touch any part of the county
+  grid <- cali_grid[county,]
+  # output grid IDs
+  grid_id <- grid$id
+  # subset the intersected polygon
+  inter_poly <- st_intersection(st_geometry(grid),st_geometry(county))
+  # find proportion intersect with original grid
+  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid))
+  # make a tibble
+  prop_int_tibble <- tibble(grid_id, prop_int) %>% 
+    set_names(c("grid_id", fips_id)) %>% 
+    right_join(prop_int_tibble, by = "grid_id")
+} # end loop
 
-prop_int2 <- as.numeric(st_area(grid_area2)/st_area(cali_grid))
-
-test_tibble <- as.tibble(prop_int2)
-
-ggplot(test_tibble, aes(x=prop_int2)) + geom_density()
-
-# bind proportions back in with cali grid
-cali_grid$proportion <- prop_int2
 
 # plot
 ggplot(cali_county) + 
