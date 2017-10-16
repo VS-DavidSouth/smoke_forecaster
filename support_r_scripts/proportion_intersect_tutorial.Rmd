@@ -1,5 +1,5 @@
 ---
-title: "Calculating Proportion Intersect using Simple Features (sf)""
+title: "Calculating Proportion Intersect using Simple Features (sf)"
 author: "Ryan Gan"
 date: "10/12/2017"
 output: html_document
@@ -20,10 +20,10 @@ library(sf)
 library(tidyverse)
 # load wrfgrid polygon ----
 # define relative path to polygon file
-poly_path <- "./data/bluesky_grid"
+poly_path <- "../data/bluesky_grid"
 poly_layer <- "bluesky_grid"
 # county path
-co_path <- "./data/us_county"
+co_path <- "../data/us_county"
 co_layer <- "us_county"
 
 # read in bluesky grid
@@ -67,21 +67,33 @@ Before we apply a function to the whole state, we'll subset start small with one
 
 I'm going to pick Los Angeles county since it's small and has some islands. We can subset in the same way we did before.
 
-```{r la county subset}
+```{r la county subset, warning = F}
 # subset orange county by fips code
 la_county <- cali_county[cali_county$COUNTYFP=="037",]
 # subset grids to orange county
 la_grid <- cali_grid[la_county, ]
-# plot to check
+
+# dataframe of name and centroid to plot
+grid_names <- la_grid %>% 
+  group_by(id) %>% 
+  mutate(lon = unlist(st_centroid(geometry))[1],
+         lat = unlist(st_centroid(geometry))[2]) %>% 
+  ungroup() %>% 
+  select(id, lon, lat)
+# convert simple featrues to dataframe
+st_geometry(grid_names) <- NULL
+
+# plot grid over LA county and label grid cells
 ggplot() + 
   geom_sf(data = la_county) +
   geom_sf(data=la_grid, alpha = 0.0) +
+  geom_text(data=grid_names, aes(x=lon, y=lat, label=id), size = 2.5, angle=45)+
   theme_bw()
 ```
 
-Proportion intersection of one grid for the upper part of LA county.
+We'll calculate the proportion intersection of one grid, 55299, for the upper part of LA county.
 
-```{r proportion intersect}
+```{r proportion intersect, warning=F}
 # first find the intersection between the two shapes
 intersect_sf <- st_intersection(la_county, la_grid[1,])
 # find the proportion intersect by subtracting the area of the intersection
@@ -91,35 +103,45 @@ prop_intersect <- as.numeric(st_area(intersect_sf)/st_area(la_grid[1,]))
 prop_intersect
 ```
 
-Since "sf" brings in polygons as simple features as a data frame instead of multiple little polygons as part of a larger polygon, that changes how I can calculate proportion intersect. It really is amazing and much faster.
+Since "sf" brings in polygons as simple features as a data frame instead of multiple little polygons as part of a larger polygon, that changes how I can calculate proportion intersect. I believe it's more intuitive, takes less memory, and much faster. 
 
+Calculating the proportion intersect between all grids in LA county with LA county is as simple as putting the whole grid in the intersect function. Before, I had to subset each grid and find each intersection with the county polygon, which took a lot longer.
 
-Next we define our intersect function.
-
-```{r intersection}
+```{r intersection, warning=F}
 # sf might make this easier since each object comes in as a dataframe and not
 # a bunch of little polygons as part of a big polygon
 # find intersection of grid for the county
 grid_area <- st_intersection(st_geometry(la_grid),st_geometry(la_county))
 # caluclate proportion intersect 
 prop_int <- as.numeric(st_area(grid_area)/st_area(la_grid))
-# oh my god that's so much faster and easier
-
 # now I need to assign it back to the county shapefile
 la_grid$proportion <- prop_int
-prop_int
+
+# make a dataframe with rounded proportion values
+grid_names <- la_grid %>% 
+  mutate(proportion = round(prop_int,2)) %>% 
+  group_by(id) %>% 
+  mutate(lon = unlist(st_centroid(geometry))[1],
+         lat = unlist(st_centroid(geometry))[2]) %>% 
+  ungroup() %>% 
+  select(id, lon, lat, proportion)
+# convert simple featrues to dataframe
+st_geometry(grid_names) <- NULL
+
 # plot
 ggplot(la_county) + 
   geom_sf() +
   geom_sf(data=la_grid, aes(fill=proportion), alpha=0.7) +
+  geom_text(data=grid_names, aes(x=lon, y=lat, label=proportion), 
+            size = 2.5, angle=45) +
   theme_bw()
 ```
 
-Try it out on the state. I don't think I can use purrr map functions yet. I'll use apply functions.
+I calculated the intersection for each grid with the county shape, plotted a gradiet fill and the value of the proportion intersect. Based on the eye-ball test, it looks like our function worked. Our top-left grid cell also matches what we calculated before (I rounded to the nearest hundreth).
 
-```{r grid intersect for cali}
-head(cali_county)
-summary(la_county)
+Try it out on the state of California. I don't think I can use purrr map functions yet. I'll use a for loop.
+
+```{r grid intersect for cali for loop, warning=F}
 # I had some problems feeding the sf object directly in to the function when I
 # tried to use the apply or map functions, which led me to think purrr and map
 # were not compatible yet. If I feed in a vector of the state/county fips,
@@ -132,7 +154,6 @@ prop_int_tibble <- cali_grid$id %>%
 
 # turning this in to a for loop because i'm annoyed
 for(i in 1:length(cali_county$FIPS)){
-  i <- 1
   # subset county to find intersect
   county <- slice(cali_county, i)
   # extract fips number for variable name
@@ -151,6 +172,8 @@ for(i in 1:length(cali_county$FIPS)){
     right_join(prop_int_tibble, by = "grid_id")
 } # end loop
 
+# that was fast enough and easier to follow
+summary(prop_int_tibble)
 
 # plot
 ggplot(cali_county) + 
@@ -159,5 +182,45 @@ ggplot(cali_county) +
   theme_bw()
 ```
 
-I think it works, but I can see a problem in that I need to find a way to only fill cells for the grid and county and then all other cells need to be 0. May be best to go by each county and calculate? Kind of looks that way as I think some grids that intersect multiple counties create sf objects with multiple polygons and then it can't bind back in to the original grid.
+Next steps would be to figure out how to use the sf package with apply or map type functions.
+
+```{r purrr attempt, warning = F, eval = F}
+# define intersect function to output a vector 
+prop_int_fun <- function(x){
+  county <- x
+  # extract fips number for variable name
+  fips_id <- paste0("fips_", county$FIPS)
+  # subset grid cells that touch any part of the county
+  grid <- cali_grid[county,]
+  # output grid IDs
+  grid_id <- grid$id
+  # subset the intersected polygon
+  inter_poly <- st_intersection(st_geometry(grid),st_geometry(county))
+  # find proportion intersect with original grid
+  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid))
+}
+
+# test of la county
+la_test <- prop_int_fun(la_county)
+
+y <- cali_county %>% 
+  group_by(FIPS) %>% 
+  nest
+
+
+
+test1 <- lapply(1:nrow(cali_county), prop_int_fun)
+
+
+test <- sapply(x$geometry, prop_int_fun)
+
+
+test3 <- cali_county %>% 
+  group_by(FIPS) %>% 
+  lmap(prop_int_fun)
+
+test_apply <- lapply(cali_county, prop_int_fun)
+```
+
+
 
