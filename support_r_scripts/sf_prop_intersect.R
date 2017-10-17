@@ -7,16 +7,16 @@
 # R Version: 3.4.2
 # ------------------------------------------------------------------------------
 
-# General note: The sf package makes proportion intersect cacluations a lot faster
+# General note: The sf package makes proportion intersect cacluations faster
 # and it can run on a personal computer rather than on a server. I'd still like
 # to figure out how to use it in either an apply- or map-type function, but the
 # for loop will work for now since I would like to move on with the project.
 
-# load libraries
+# load libraries ---------------------------------------------------------------
 library(sf)
 library(tidyverse)
 
-# load shapefiles/polygons using st_read ----
+# load shapefiles/polygons using st_read ---------------------------------------
 # define relative path to polygon file
 poly_path <- "./data/bluesky_grid"
 poly_layer <- "bluesky_grid"
@@ -32,12 +32,29 @@ bluesky_grid$id <- as.numeric(seq(1:94068))
 us_county <- st_read(dsn = co_path, layer = co_layer) %>% 
   mutate(FIPS = paste0(STATEFP, COUNTYFP))
 
-# creating a tibble of the grid_id to join data with ----
+# subset LA county FIPS 06037; used to check the final product -----------------
+la_county <- us_county %>% filter(FIPS == "06037")
+# subset grids to orange county
+la_grid <- bluesky_grid[la_county, ]
+# find intersection of grid for the county
+grid_area <- st_intersection(st_geometry(la_grid),st_geometry(la_county))
+# caluclate proportion intersect 
+prop_int <- as.numeric(st_area(grid_area)/st_area(la_grid))
+# now I need to assign it back to the county shapefile
+la_grid$proportion <- prop_int
+
+# output just the id and proportion intersect and label it 1
+la_grid_prop_int1 <- la_grid %>% select(id, proportion) %>% 
+  rename(fips_06037 = proportion)
+# remove geometry
+st_geometry(la_grid_prop_int1) <- NULL
+
+# creating a tibble of the grid_id to join data with ---------------------------
 prop_int_tibble <- bluesky_grid$id %>% 
   tibble() %>% 
   rename(grid_id = ".")
 
-# for loop to calcuate intersection of grids in each US county ----
+# for loop to calcuate intersection of grids in each US county -----------------
 # start time
 start_time <- Sys.time()
 
@@ -68,5 +85,25 @@ end_time <- Sys.time()
 total_time <- end_time - start_time
 total_time
 
-# remember to check and save before you exit. 
-# I expect a tibble with 94068 rows and 3108 columns
+# took 1.79 hours to run
+
+# check some of the tibble
+summary(prop_int_tibble[,1:10])
+
+# setting missing values to 0
+bluesky_prop_int <- prop_int_tibble %>% 
+  mutate_at(-grid_id, ifelse(is.na(.),0,.))
+
+# check the LA county FIPS from the large dataframe and compare against test
+la_grid_prop_int2 <- bluesky_prop_int %>% 
+  select(fips_06037) %>% filter(fips_06037 != 0)
+
+# test if identical
+identical(la_grid_prop_int1, la_grid_prop_int2)
+summary(la_grid_prop_int1)
+summary(la_grid_prop_int2)
+
+# save final bluesky product ---------------------------------------------------
+save_path <- "./data/bluesky_prop.csv"
+write_csv(bluesky_prop_int, save_path)
+?write_csv
