@@ -64,6 +64,10 @@ registerDoParallel(cl)
 # load packages on each cluster
 clusterCall(cl, function() library(sf))
 clusterCall(cl, function() library(tidyverse))
+# load bluesky grid and county poly on each core
+clusterExport(cl, "us_county", envir = .GlobalEnv)
+clusterExport(cl, "bluesky_grid", envir = .GlobalEnv)
+clusterExport(cl, "prop_int_tibble", envir = .GlobalEnv)
 
 # for loop to calcuate intersection of grids in each US county -----------------
 # start time
@@ -88,6 +92,9 @@ foreach(i=1:length(us_county$FIPS), .combine=cbind, .inorder=T) %dopar% {
     set_names(c("grid_id", fips_id)) %>% 
     right_join(prop_int_tibble, by = "grid_id")
 } # end loop
+
+# stop cluster
+stopCluster(cl)
 
 # end time
 end_time <- Sys.time()
