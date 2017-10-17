@@ -15,6 +15,9 @@
 # load libraries ---------------------------------------------------------------
 library(sf)
 library(tidyverse)
+# parallel libraries
+library(foreach)
+library(doParallel)
 
 # load shapefiles/polygons using st_read ---------------------------------------
 # define relative path to polygon file
@@ -54,12 +57,20 @@ prop_int_tibble <- bluesky_grid$id %>%
   tibble() %>% 
   rename(grid_id = ".")
 
+# setup for parallel computing for parallel for loop ---------------------------
+cores <- detectCores() 
+cl <- makeCluster(cores) # use all cores on the vet cluster
+registerDoParallel(cl)
+# load packages on each cluster
+clusterCall(cl, function() library(sf))
+clusterCall(cl, function() library(tidyverse))
+
 # for loop to calcuate intersection of grids in each US county -----------------
 # start time
 start_time <- Sys.time()
 
-# for loop
-for(i in 1:length(us_county$FIPS)){
+# for each loop
+foreach(i=1:length(us_county$FIPS), .combine=cbind, .inorder=T) %dopar% {
   # subset county to find intersect
   county <- slice(us_county, i)
   # extract fips number for variable name
@@ -106,4 +117,4 @@ summary(la_grid_prop_int2)
 # save final bluesky product ---------------------------------------------------
 save_path <- "./data/bluesky_prop.csv"
 write_csv(bluesky_prop_int, save_path)
-?write_csv
+

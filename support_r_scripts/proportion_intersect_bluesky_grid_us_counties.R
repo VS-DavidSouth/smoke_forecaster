@@ -41,6 +41,22 @@ us_county <- readOGR(dsn = co_path, layer = co_layer)
 county_id <- as.character(sort(us_county@data$GEOID))
 plot(us_county)
 
+# output colorado county using STATEFP
+co_county <- us_county[us_county$STATEFP=="08", ]
+plot(co_county)
+# subset grid for just colorado
+co_grid <- bluesky_grid[co_county, ]
+plot(co_grid)
+plot(co_county, add=T)
+
+# works well with colorado, but colorado is a nice square, try with cali
+ca_county <- us_county[us_county$STATEFP=="06", ]
+# subset grid for cali
+ca_grid <- bluesky_grid[ca_county, ]
+plot(ca_grid)
+plot(ca_county, add=T)
+
+
 # I need to find a way to calculate chunks at a time. Maybe subset the state,
 # and then find the grid boxes that fall within or overlap with that state and
 # calculate? Then bind it all back together for the proportion intersect matrix.
@@ -80,6 +96,7 @@ county_poly_list <- lapply(county_id, co_poly_fun)
 bs_poly_list <- lapply(bs_id, bs_poly_fun)
 
 # numbers sequence of order to subset county (c) and grid (g)
+# note Oct 11: this is going to vary now by number of ojects in county and grid
 c <- rep(1:3108, each=94068)
 g <- rep(1:94068, times=3108)
 
