@@ -16,8 +16,8 @@
 library(sf)
 library(tidyverse)
 # parallel libraries
-library(foreach)
-library(doParallel)
+#library(foreach)
+#library(doParallel)
 
 # load shapefiles/polygons using st_read ---------------------------------------
 # define relative path to polygon file
@@ -58,23 +58,25 @@ prop_int_tibble <- bluesky_grid$id %>%
   rename(grid_id = ".")
 
 # setup for parallel computing for parallel for loop ---------------------------
-cores <- detectCores() 
-cl <- makeCluster(cores) # use all cores on the vet cluster
-registerDoParallel(cl)
-# load packages on each cluster
-clusterCall(cl, function() library(sf))
-clusterCall(cl, function() library(tidyverse))
-# load bluesky grid and county poly on each core
-clusterExport(cl, "us_county", envir = .GlobalEnv)
-clusterExport(cl, "bluesky_grid", envir = .GlobalEnv)
-clusterExport(cl, "prop_int_tibble", envir = .GlobalEnv)
+# cores <- detectCores() 
+# cl <- makeCluster(cores) # use all cores on the vet cluster
+# registerDoParallel(cl)
+# # load packages on each cluster
+# clusterCall(cl, function() library(sf))
+# clusterCall(cl, function() library(tidyverse))
+# # load bluesky grid and county poly on each core
+# clusterExport(cl, "us_county", envir = .GlobalEnv)
+# clusterExport(cl, "bluesky_grid", envir = .GlobalEnv)
+# clusterExport(cl, "prop_int_tibble", envir = .GlobalEnv)
 
 # for loop to calcuate intersection of grids in each US county -----------------
 # start time
 start_time <- Sys.time()
 
 # for each loop
-foreach(i=1:length(us_county$FIPS), .combine=cbind, .inorder=T) %dopar% {
+#foreach(i=1:length(us_county$FIPS), .combine=cbind, .inorder=T) %dopar% {
+# for version
+for(i in 1:length(us_county$FIPS)){
   # subset county to find intersect
   county <- slice(us_county, i)
   # extract fips number for variable name
@@ -108,18 +110,18 @@ total_time
 # check some of the tibble
 summary(prop_int_tibble[,1:10])
 
-# setting missing values to 0
-bluesky_prop_int <- prop_int_tibble %>% 
-  mutate_at(-grid_id, ifelse(is.na(.),0,.))
-
-# check the LA county FIPS from the large dataframe and compare against test
-la_grid_prop_int2 <- bluesky_prop_int %>% 
-  select(fips_06037) %>% filter(fips_06037 != 0)
-
-# test if identical
-identical(la_grid_prop_int1, la_grid_prop_int2)
-summary(la_grid_prop_int1)
-summary(la_grid_prop_int2)
+# # setting missing values to 0
+# bluesky_prop_int <- prop_int_tibble %>% 
+#   mutate_at(-grid_id, ifelse(is.na(.),0,.))
+# 
+# # check the LA county FIPS from the large dataframe and compare against test
+# la_grid_prop_int2 <- bluesky_prop_int %>% 
+#   select(fips_06037) %>% filter(fips_06037 != 0)
+# 
+# # test if identical
+# identical(la_grid_prop_int1, la_grid_prop_int2)
+# summary(la_grid_prop_int1)
+# summary(la_grid_prop_int2)
 
 # save final bluesky product ---------------------------------------------------
 save_path <- "./data/bluesky_prop.csv"
