@@ -96,7 +96,7 @@ for(i in 1:length(us_county$FIPS)){
 } # end loop
 
 # stop cluster
-stopCluster(cl)
+#stopCluster(cl)
 
 # end time
 end_time <- Sys.time()
@@ -111,7 +111,7 @@ total_time
 summary(prop_int_tibble[,1:10])
 
 # # setting missing values to 0
-# bluesky_prop_int <- prop_int_tibble %>% 
+ bluesky_prop_int <- prop_int_tibble #%>% 
 #   mutate_at(-grid_id, ifelse(is.na(.),0,.))
 # 
 # # check the LA county FIPS from the large dataframe and compare against test
