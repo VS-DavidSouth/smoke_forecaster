@@ -8,16 +8,11 @@
 # ------------------------------------------------------------------------------
 
 # General note: The sf package makes proportion intersect cacluations faster
-# and it can run on a personal computer rather than on a server. I'd still like
-# to figure out how to use it in either an apply- or map-type function, but the
-# for loop will work for now since I would like to move on with the project.
+# and it can run on a personal computer rather than on a server. I
 
 # load libraries ---------------------------------------------------------------
 library(sf)
 library(tidyverse)
-# parallel libraries
-#library(foreach)
-#library(doParallel)
 
 # load shapefiles/polygons using st_read ---------------------------------------
 # define relative path to polygon file
@@ -35,94 +30,98 @@ bluesky_grid$id <- as.numeric(seq(1:94068))
 us_county <- st_read(dsn = co_path, layer = co_layer) %>% 
   mutate(FIPS = paste0(STATEFP, COUNTYFP))
 
-# subset LA county FIPS 06037; used to check the final product -----------------
-la_county <- us_county %>% filter(FIPS == "06037")
-# subset grids to orange county
-la_grid <- bluesky_grid[la_county, ]
-# find intersection of grid for the county
-grid_area <- st_intersection(st_geometry(la_grid),st_geometry(la_county))
-# caluclate proportion intersect 
-prop_int <- as.numeric(st_area(grid_area)/st_area(la_grid))
-# now I need to assign it back to the county shapefile
-la_grid$proportion <- prop_int
+summary(bluesky_grid)
+summary(us_county)
+plot(us_county$geometry)
 
-# output just the id and proportion intersect and label it 1
-la_grid_prop_int1 <- la_grid %>% select(id, proportion) %>% 
-  rename(fips_06037 = proportion)
-# remove geometry
-st_geometry(la_grid_prop_int1) <- NULL
+grid_i <- bluesky_grid[us_county,]
 
-# creating a tibble of the grid_id to join data with ---------------------------
-prop_int_tibble <- bluesky_grid$id %>% 
-  tibble() %>% 
-  rename(grid_id = ".")
+intersect_sf <- st_intersection(bluesky_grid, us_county)
 
-# setup for parallel computing for parallel for loop ---------------------------
-# cores <- detectCores() 
-# cl <- makeCluster(cores) # use all cores on the vet cluster
-# registerDoParallel(cl)
-# # load packages on each cluster
-# clusterCall(cl, function() library(sf))
-# clusterCall(cl, function() library(tidyverse))
-# # load bluesky grid and county poly on each core
-# clusterExport(cl, "us_county", envir = .GlobalEnv)
-# clusterExport(cl, "bluesky_grid", envir = .GlobalEnv)
-# clusterExport(cl, "prop_int_tibble", envir = .GlobalEnv)
+proportion <- as.numeric(st_area(intersect_sf)/st_area(grid_i)) %>% 
+  data_frame() %>% rename(proportion = ".")
 
-# for loop to calcuate intersection of grids in each US county -----------------
-# start time
+intersect_sf2 <- as(intersect_sf, "Spatial")
+st_is_simple(intersect_sf[1:2,])
+test <- st_area(intersect_sf)
+
+# check type
+st_geometry(grid_i)
+st_geometry(us_county)
+st_geometry(bluesky_grid)
+st_geometry(intersect_sf)
+# see if you can return values where 
+# area works for most but breaks somewhere in the intersect (maybe islands?)
+area <- st_area(intersect_sf[1:64283,])
+st_area
+# custom functions -------------------------------------------------------------
+# proportion_intersect ----
+# custom function (I should write this to a package)
+proportion_intersect <- function(poly_sf, poly_id, grid_sf, grid_id){
+  # enquo lazy eval
+  poly_id <- enquo(poly_id)
+  grid_id <- enquo(grid_id)
+  # subset grid that contains poly_i
+  grid_i <- grid_sf[poly_sf,]
+  # proportion intersect
+  intersect_sf <- st_intersection(grid_i, poly_sf)
+  # calculation of proportion intersect
+  proportion <- as.numeric(st_area(intersect_sf)/st_area(grid_i)) %>% 
+    data_frame() %>% rename(proportion = ".")
+  # column bind the proportion to the intersect sf object
+  output_df <- intersect_sf %>% 
+    # eventually replace these with generic names
+    select(!!grid_id, !!poly_id) %>% 
+    bind_cols(proportion)
+  # remove geometry
+  st_geometry(output_df) <- NULL
+  return(output_df)
+}
+
+# proportion intersect data frame ----
+# this custom function creates the proportion intersect data frame that can be
+# converted to a matrix for population-weighting
+pi_matrix <- function(grid_sf, grid_id, prop_int_df, poly_id){
+  # lazy eval variables
+  grid_id <- enquo(grid_id)
+  poly_id <- enquo(poly_id)
+
+  # remove geometry object from grid
+  st_geometry(grid_sf) <- NULL
+  # prep grid dataframe
+  grid_id_column <- grid_sf %>% select(!!grid_id)
+  
+  # full grid joined with proportion intersect grid
+  output_df <- grid_id_column %>% 
+    # join grid ids to grids with proportion values
+    left_join(prop_int_df, by = as.character(grid_id[2])) %>% 
+    mutate(poly = as.factor(paste0("poly", !!poly_id))) %>%
+    # it may be important to remove the poly_id so spread just has the 
+    # grid id, new poly id, and the proportions to work with
+    select(-!!poly_id) %>% 
+    # remove duplicates
+    filter(!duplicated(.)) %>% 
+    # spread
+    spread(poly, proportion) %>% 
+    # mutate missing to 0 at each poly var
+    mutate_at(vars(contains("poly")), funs(ifelse(is.na(.), 0,
+                                                  ifelse(.>1, 1, .)))) %>% 
+    # remove idNA
+    select(-polyNA) 
+  
+  # output dataframe
+  return(output_df)
+}  
+
+# calculate proportion intersect -----------------------------------------------
 start_time <- Sys.time()
+county_bluesky_pi <- proportion_intersect(poly = us_county, poly_id = FIPS,
+                                          grid = bluesky_grid, grid_id = id)
+stop_time <- Sys.time()
+compute_time <- stop_time - start_time
+compute_time
 
-# for each loop
-#foreach(i=1:length(us_county$FIPS), .combine=cbind, .inorder=T) %dopar% {
-# for version
-for(i in 1:length(us_county$FIPS)){
-  # subset county to find intersect
-  county <- slice(us_county, i)
-  # extract fips number for variable name
-  fips_id <- paste0("fips_", county$FIPS)
-  # subset grid cells that touch any part of the county
-  grid <- bluesky_grid[county,]
-  # output grid IDs
-  grid_id <- grid$id
-  # subset the intersected polygon
-  inter_poly <- st_intersection(st_geometry(grid),st_geometry(county))
-  # find proportion intersect with original grid
-  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid))
-  # make a tibble
-  prop_int_tibble <- tibble(grid_id, prop_int) %>% 
-    set_names(c("grid_id", fips_id)) %>% 
-    right_join(prop_int_tibble, by = "grid_id")
-} # end loop
-
-# stop cluster
-#stopCluster(cl)
-
-# end time
-end_time <- Sys.time()
-
-# difference in time
-total_time <- end_time - start_time
-total_time
-
-# took 1.79 hours to run
-
-# check some of the tibble
-summary(prop_int_tibble[,1:10])
-
-# # setting missing values to 0
- bluesky_prop_int <- prop_int_tibble #%>% 
-#   mutate_at(-grid_id, ifelse(is.na(.),0,.))
-# 
-# # check the LA county FIPS from the large dataframe and compare against test
-# la_grid_prop_int2 <- bluesky_prop_int %>% 
-#   select(fips_06037) %>% filter(fips_06037 != 0)
-# 
-# # test if identical
-# identical(la_grid_prop_int1, la_grid_prop_int2)
-# summary(la_grid_prop_int1)
-# summary(la_grid_prop_int2)
-
+plot(bluesky_grid$geometry)
 # save final bluesky product ---------------------------------------------------
 save_path <- "./data/bluesky_prop.csv"
 write_csv(bluesky_prop_int, save_path)
