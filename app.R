@@ -16,8 +16,8 @@ library(leaflet)
 library(rgdal) # read shapefile
 
 # setting working directory to salix server
-wd_dir <- paste0("/srv/www/rgan/smoke_forecaster/")
-setwd(wd_dir)
+#wd_dir <- paste0("/srv/www/rgan/smoke_forecaster/")
+#setwd(wd_dir)
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file

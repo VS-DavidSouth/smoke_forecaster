@@ -34,26 +34,6 @@ summary(bluesky_grid)
 summary(us_county)
 plot(us_county$geometry)
 
-grid_i <- bluesky_grid[us_county,]
-
-intersect_sf <- st_intersection(bluesky_grid, us_county)
-
-proportion <- as.numeric(st_area(intersect_sf)/st_area(grid_i)) %>% 
-  data_frame() %>% rename(proportion = ".")
-
-intersect_sf2 <- as(intersect_sf, "Spatial")
-st_is_simple(intersect_sf[1:2,])
-test <- st_area(intersect_sf)
-
-# check type
-st_geometry(grid_i)
-st_geometry(us_county)
-st_geometry(bluesky_grid)
-st_geometry(intersect_sf)
-# see if you can return values where 
-# area works for most but breaks somewhere in the intersect (maybe islands?)
-area <- st_area(intersect_sf[1:64283,])
-st_area
 # custom functions -------------------------------------------------------------
 # proportion_intersect ----
 # custom function (I should write this to a package)
@@ -64,7 +44,10 @@ proportion_intersect <- function(poly_sf, poly_id, grid_sf, grid_id){
   # subset grid that contains poly_i
   grid_i <- grid_sf[poly_sf,]
   # proportion intersect
-  intersect_sf <- st_intersection(grid_i, poly_sf)
+  intersect_sf <- st_intersection(grid_i, poly_sf) %>% 
+    # filter only to polygon or multipolygon type 
+    # to avoid errors with point or line types
+    filter(st_is(., c("POLYGON", "MULTIPOLYGON"))==T)
   # calculation of proportion intersect
   proportion <- as.numeric(st_area(intersect_sf)/st_area(grid_i)) %>% 
     data_frame() %>% rename(proportion = ".")
@@ -120,9 +103,23 @@ county_bluesky_pi <- proportion_intersect(poly = us_county, poly_id = FIPS,
 stop_time <- Sys.time()
 compute_time <- stop_time - start_time
 compute_time
+# warning messages but should work; took ~3 minutes
 
-plot(bluesky_grid$geometry)
+start_time <- Sys.time()
+# create proportion intersect dataframe(matrix)
+bluesky_prop_int <- pi_matrix(grid_sf = bluesky_grid, grid_id = id, 
+  prop_int_df = county_bluesky_pi,poly_id = FIPS)
+stop_time <- Sys.time()
+compute_time <- stop_time - start_time
+compute_time
+# took 4 minutes; saving the file as a dataframe csv
+# it will need to be converted to a matrix and the id column will need to be 
+# assigned to row variable; I should do a small area of the grid check to make
+# sure it matches; will do this later
+
 # save final bluesky product ---------------------------------------------------
-save_path <- "./data/bluesky_prop.csv"
+save_path <- "./data/bluesky_prop_int.csv"
 write_csv(bluesky_prop_int, save_path)
+
+
 
