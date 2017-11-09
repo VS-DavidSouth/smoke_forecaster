@@ -134,8 +134,6 @@ bs2v2 <- function(fileName) {
 nc_close(nc)
 rm(nc)
 
-# I'm beginning to think it might just be easier to work with a raster layer
-# rather than ncdf
 # Now run this function on the file we just downloaded
 bs2v2(fileName)
 list.files(pattern='*.nc')
