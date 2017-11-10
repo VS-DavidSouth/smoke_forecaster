@@ -54,7 +54,7 @@ proportion_intersect <- function(poly_sf, poly_id, grid_sf, grid_id){
   # column bind the proportion to the intersect sf object
   output_df <- intersect_sf %>% 
     # eventually replace these with generic names
-    select(!!grid_id, !!poly_id) %>% 
+    dplyr::select(!!grid_id, !!poly_id) %>% 
     bind_cols(proportion)
   # remove geometry
   st_geometry(output_df) <- NULL
@@ -87,16 +87,16 @@ pi_matrix <- function(grid_sf, grid_id, prop_int_df, poly_id){
     # spread
     spread(poly, proportion) %>% 
     # mutate missing to 0 at each poly var
-    mutate_at(vars(contains("poly")), funs(ifelse(is.na(.), 0,
-                                                  ifelse(.>1, 1, .)))) %>% 
+    mutate_at(vars(contains("poly")), funs(as.integer(ifelse(is.na(.), 0,
+                                                  ifelse(.>1, 1, .))))) %>% 
     # remove idNA
-    select(-polyNA) 
-  
+    select(-contains("polyNA")) 
+
   # output dataframe
   return(output_df)
 }  
 
-# calculate proportion intersect -----------------------------------------------
+# calculate proportion intersect for entire US ---------------------------------
 start_time <- Sys.time()
 county_bluesky_pi <- proportion_intersect(poly = us_county, poly_id = FIPS,
                                           grid = bluesky_grid, grid_id = id)
@@ -105,8 +105,8 @@ compute_time <- stop_time - start_time
 compute_time
 # warning messages but should work; took ~3 minutes
 
-start_time <- Sys.time()
 # create proportion intersect dataframe(matrix)
+start_time <- Sys.time()
 bluesky_prop_int <- pi_matrix(grid_sf = bluesky_grid, grid_id = id, 
   prop_int_df = county_bluesky_pi,poly_id = FIPS)
 stop_time <- Sys.time()
@@ -117,9 +117,70 @@ compute_time
 # assigned to row variable; I should do a small area of the grid check to make
 # sure it matches; will do this later
 
+summary(bluesky_prop_int[,1:120])
+
 # save final bluesky product ---------------------------------------------------
 save_path <- "./data/bluesky_prop_int.csv"
 write_csv(bluesky_prop_int, save_path)
 
+# Check of California ----------------------------------------------------------
 
 
+detachAllPackages <- function() {
+    basic.packages <- c("package:stats","package:graphics","package:grDevices",
+      "package:utils","package:datasets","package:methods","package:base")
+    package.list <- search()[ifelse(unlist(gregexpr("package:",
+                                                    search()))==1,TRUE,FALSE)]
+    package.list <- setdiff(package.list,basic.packages)
+    if (length(package.list)>0)  for (package in package.list) detach(package, 
+                                                            character.only=TRUE)
+    
+  }
+
+detachAllPackages()
+# limit us counties to counties around the california bay area
+california_sf <- us_county %>% 
+  filter(STATEFP == "06")
+
+# find grids that touch a county in california
+california_intersect <- st_intersection(bluesky_grid, california_sf) %>% 
+  select(id) 
+# output ids of grid
+california_id <- california_intersect$id
+
+# subset bluesky grid to just ids
+california_grid <- bluesky_grid %>% 
+  filter(id %in% california_id)
+
+# plot california
+ggplot(data=california_grid) +
+  geom_sf()
+
+# calculate intersect
+start_time <- Sys.time()
+california_pi <- proportion_intersect(poly = california_sf, poly_id = FIPS,
+                                      grid = california_grid, grid_id = id)
+stop_time <- Sys.time()
+compute_time <- stop_time - start_time
+compute_time
+
+range(california_grid$id)
+range(california_pi$id)
+
+# create intersect dataframe
+start_time <- Sys.time()
+california_prop_int <- pi_matrix(grid_sf = california_grid, grid_id = id, 
+                                prop_int_df = california_pi, poly_id = FIPS)
+stop_time <- Sys.time()
+compute_time <- stop_time - start_time
+compute_time
+
+# i've had issues on import; I think i need to make sure everything is numeric
+glimpse(california_prop_int)
+summary(california_prop_int)
+
+summary(california_prop_int)  
+
+# save final california product ------------------------------------------------
+save_path <- "./data/california_prop_int.csv"
+write_csv(california_prop_int, save_path)
