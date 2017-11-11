@@ -186,13 +186,30 @@ dim(county_pop_den)
 county_pop_den[county_pop_den == 0] <- 0.01
 
 invert_pop_den <- 1/county_pop_den
+
+
 # i think some of the counties will  have problems if I try and invert by density
 # this may have been the issue I had earlier; curious if I'd get a similar answer
 # if I used estimated population
 dim(pm_popden_county_matrix)
 dim(invert_pop_den)
-county_pop_wt_pm <- invert_pop_den * pm_popden_county_matrix 
+colnames(invert_pop_den) <- NULL
+# matrix multiplicaiton won't work.
+county_pop_wt_pm <- pm_popden_county_matrix[,1] * invert_pop_den 
 
+napa_pm <- pm_popden_county_matrix[rownames(pm_popden_county_matrix)=="poly06025",]
+napa_popden <- county_pop_den[rownames(county_pop_den)=="poly06025",]
+
+napa_pm
+napa_popden
+
+# maybe I don't need to divide by population density? maybe I need to divide
+# by population? try that way next time.
+
+head(county_pop_wt_pm)
+tail(county_pop_wt_pm)
+summary(pm_popden_county_matrix)
+summary(county_pop_wt_pm)
 # STUFF I NEED TO FIGURE OUT
 
 
