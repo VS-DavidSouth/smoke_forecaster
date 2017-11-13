@@ -58,6 +58,7 @@ next_day_date <- format(as.POSIXct(next_day_date, origin="1970-1-1", tz="GMT"),
 same_day_vector  <- as.vector(as.matrix(same_day_mean_smk))
 # next day vector
 next_day_vector <- as.vector(as.matrix(next_day_mean_smk))
+
 # grid smoke values matrix (grid ids are rows and cols are dates)
 smk_grid_matrix <- matrix(cbind(same_day_vector, next_day_vector), 
   # dims of matrix
@@ -65,8 +66,6 @@ smk_grid_matrix <- matrix(cbind(same_day_vector, next_day_vector),
   # names of rows and columns
   dimnames = list(paste0("grid",seq(1:length(same_day_vector))),
                   c("day1", "day2")))
-# check grid
-head(smk_grid_matrix)
 
 # population by grid vector ----------------------------------------------------
 # population net cdf file 
@@ -82,26 +81,12 @@ nlon <- dim(lon)
 
 lat <- ncvar_get(pop_nc, "latitude")
 nlat <- dim(lat)
-# lat and lon values dont' really make sense, but I don't think I need them
-# if I assume this grid is the same blue sky grid
-# still it would be good to check with Bonne on what's going on
+
 # output matrix of total count per grid
 pop_bluesky <- ncvar_get(pop_nc, "Population")
-pop_bluesky <- t(pop_bluesky[,ncol(pop_bluesky):1])
 # get pop density
 popden_bluesky <- ncvar_get(pop_nc, "PopulationDensity")
 # matrix needs to be fixed; I think columns need to be inverted and this works
-# but check with bonne to do this right
-popden_bluesky <- t(popden_bluesky[,ncol(popden_bluesky):1])
-
-# add population density to smk raster to see if it proejcts right
-raster_with_pop <- same_day_mean_smk
-# need to transpose pop den matrix; hopefully i can fix this in the netcdf
-raster_with_pop$popden <- popden_bluesky
-
-# looks okay. a lot of smoke in San Fran area and populations in LA.
-plot(raster_with_pop$popden, col=rev(RColorBrewer::brewer.pal(11, "RdBu")))
-plot(raster_with_pop$layer, alpha=0.2, add=T)
 
 # population per grid matrix ---------------------------------------------------
 # convert population density matrix to vector
@@ -111,6 +96,45 @@ popden_vector <- as.vector(popden_bluesky)
 popden_matrix <- matrix(popden_vector, nrow=length(popden_vector), ncol=1,
   dimnames = list(paste0("grid",seq(1:length(same_day_vector))),"popden"))
 
+# convert population matrix to vector
+pop_vector <- as.vector(pop_bluesky)
+# make matrix
+pop_matrix <- matrix(pop_vector, nrow=length(pop_vector), ncol=1,
+  dimnames = list(paste0("grid",seq(1:length(same_day_vector))),"population"))
+
+head(pop_matrix)
+summary(pop_matrix)
+
+# intersection dataframe -------------------------------------------------------
+grid_county_pi <- read_csv("./data/bluesky_prop_int.csv")
+summary(grid_county_pi[,1:10])
+
+# convert to matrix
+grid_county_pi_matrix <- as.matrix(grid_county_pi[,-1])
+# estimate population for each county ------------------------------------------
+
+# make sure matrix dimensions allow for matrix algebra
+dim(pop_matrix)
+dim(grid_county_pi)
+head(pop_matrix)
+head(t(grid_county_pi_matrix[1:10,1:10]))
+# county names
+county_names <- colnames(grid_county_pi_matrix)
+
+
+# population per county
+county_population <- t(pop_matrix) %*% grid_county_pi_matrix
+
+# convert to matrix
+county_population_matrix <- matrix(county_population,
+  nrow = length(county_names), ncol = 1, 
+  dimnames = list(county_names, "population"))
+
+head(county_population_matrix)
+# something is very wrong with the population estimates;
+# the most populated county is in south carolina 
+
+# subset to califronia ---------------------------------------------------------
 # subset to California (fixed by making value columns integers)
 cali_pi_grid <- read_csv("./data/california_prop_int.csv")
 summary(cali_pi_grid)
@@ -126,9 +150,8 @@ cali_raster <- crop(raster_with_pop, extent(cali_bbox))
 plot(cali_raster$popden, col=rev(RColorBrewer::brewer.pal(11, "RdBu")))
 plot(cali_raster$layer, alpha=0.5, add=T)
 
+summary(cali_raster$popden)
 # population weighted average pm2.5 values for california counties -------------
-dim(california_prop_int)
-dim(smk_grid_matrix)
 
 # set up matrices used
 # subset the smoke grid by cells in california
@@ -140,23 +163,33 @@ cali_pi_grid_county <- as.matrix(california_prop_int[,-1])
 # set row names same as cali_smk_pm_matrix
 rownames(cali_pi_grid_county) <- rownames(cali_smk_pm_matrix)
 dim(cali_pi_grid_county)
-
+cali_id
 # population density for california (this is actually a vector)
-cali_popden_grid <- popden_matrix[cali_id,]
-length(cali_popden_matrix)
+cali_pop_grid <- pop_matrix[cali_id,]
+length(cali_pop_grid)
+# convert to matrix 
+cali_pop_matrix <- as.matrix(cali_pop_grid)
 
 # first step multiply the population vector of each grid by PM2.5 concentrations
 # check
 dim(cali_smk_pm_matrix)
 head(cali_smk_pm_matrix)
-head(cali_popden_matrix)
+head(cali_pop_matrix)
+summary(cali_smk_pm_matrix)
+summary(cali_raster$layer)
+# something is off the smk pm matrix doesn't match the values in the raster
+summary(smk_grid_matrix)
+summary(raster_with_pop$layer)
+# i think the subset is messed up
+
 # multiply 
 # this is the same operation as below but crashes on large matrices
 # I need to remove this from past work (maybe not Washington)
 # test <- diag(cali_popden_matrix) %*% cali_smk_pm_matrix  
-pm_popden_matrix <- cali_popden_matrix * cali_smk_pm_matrix
-head(pm_popden_matrix)
+pm_popden_matrix <- cali_pop_matrix * cali_smk_pm_matrix
 
+head(pm_popden_matrix)
+head(cali_smk_pm_matrix)
 # next stop is to multiply the daily weighted value by the proportion intersect
 # of the grid and county
 dim(pm_popden_matrix)
@@ -203,84 +236,73 @@ napa_popden <- county_pop_den[rownames(county_pop_den)=="poly06025",]
 napa_pm
 napa_popden
 
+summary(pm_popden_county_matrix)
+head(pm_popden_county_matrix)
+
+county_names <- rownames(pm_popden_county_matrix)
+# turn rownnames in to FIPs variable
+cali_pm_pop_wt <- pm_popden_county_matrix %>% 
+  as_data_frame() %>% 
+  cbind(county_names) %>% 
+  mutate(FIPS = stringr::str_sub(county_names, start = 5L))
+
+
+
 # maybe I don't need to divide by population density? maybe I need to divide
 # by population? try that way next time.
+# seeing what would happen by population
 
-head(county_pop_wt_pm)
-tail(county_pop_wt_pm)
-summary(pm_popden_county_matrix)
-summary(county_pop_wt_pm)
-# STUFF I NEED TO FIGURE OUT
+# assign pm values to counties and plot to view ----
+# i'll remove this later
+california_pm <- california_sf %>% 
+  left_join(cali_pm_pop_wt, by = "FIPS")
 
+# join pm vals to grid
+grid_names <- rownames(cali_smk_pm_matrix)
 
+cali_pm_gridid <- cali_smk_pm_matrix %>% 
+  as_data_frame() %>% 
+  cbind(grid_names) %>% 
+  mutate(id = as.numeric(stringr::str_sub(grid_names, start=5L)))
 
-# grid county proportion intersect ---------------------------------------------
-# may just use base R and not use tidyverse
-grid_county_pi_df <- read_csv("./data/bluesky_prop_int.csv", 
-  col_types = list(col_double())) 
-# errors on import
-problems(grid_county_pi_df)
+head(cali_pm_gridid)
 
-summary(grid_county_pi_df[, 1:6])
-dim(grid_county_pi_df)
-# # convert to matrix and transpose so county are rows
-# intersect_matrix <- t(as.matrix(grid_county_pi_df[,-1]))
-# # set colnames
-# colnames(intersect_matrix) <- paste0("grid",seq(1:length(same_day_vector)))
-# 
-# head(intersect_matrix[1:6,1:6])
+california_grid_pm <- california_grid %>% 
+  left_join(cali_pm_gridid, by = "id")
 
 
-# population_wt_function -------------------------------------------------------
-# multiply population vector by pm concentration matrix for each day
 
-# dimension of matrix of pm2.5 values per grid cell
-dim(smk_grid_matrix)
-# dimension of intersect matrix
-dim(intersect_matrix)
-dim(popden_matrix)
-# Population density in each county
-#[PI]%*%[PopDen]
-popden_county <- intersect_matrix %*% popden_matrix
+ggplot(data=california_pm) +
+  geom_sf(aes(fill=day1)) +
+  scale_fill_gradient(name = "Pop Wt Smoke", low = "white", high = "red") +
+  theme_bw()
 
-summary(popden_county)
-# I will do this with population and see if it's a decent approximation to actual
-# county populations
+ggplot(data=california_grid_pm) +
+  geom_sf(aes(fill=day1*10)) +
+  scale_fill_gradient(name = "Grid Smoke", low = "white", high = "red") +
+  theme_bw()
+
+summary(california_grid_pm)
+# projection looks off
 
 
-# multiple grid poulation vector by PM2.5 values
-dim(smk_grid_matrix)
-dim(popden_matrix)
-# can't multiply by diagnol matrix of the pop vector; crashes
-# maybe I don't do matrix multiplication?
-pm_pop_matrix <- popden_vector * smk_grid_matrix
 
 
+# subset to California (fixed by making value columns integers)
+# set up matrices used
+# subset the smoke grid by cells in california
+# same day and next day value by grid
+cali_smk_pm_matrix <- smk_grid_matrix[cali_id,]
+
+# california proportion intersect grid to matrix
+cali_pi_grid_county <- as.matrix(california_prop_int[,-1])
+# set row names same as cali_smk_pm_matrix
+rownames(cali_pi_grid_county) <- rownames(cali_smk_pm_matrix)
+dim(cali_pi_grid_county)
 
 
 
 
 
-
-
-
-# next multiply pm pop matrix by proportion intersect matrix
-dim(intersect_matrix)
-dim(pm_pop_matrix)
-county_wt_pm_matrix <- intersect_matrix %*% pm_pop_matrix
-head(county_wt_pm_matrix)
-summary(county_wt_pm_matrix)
-
-# multiply (outer product) by inverse county pop vector
-dim(county_wt_pm_matrix)
-length(popden_county)
-county_pm_smk_matrix <- county_wt_pm_matrix[,1] %o% (1/popden_county)
-
-summary(county_smk_matrix)
-
-# this isn't working, i need to subset to see what's going on
-tail(county_smk_matrix)
-
-# import california proportion intersect
 
 
