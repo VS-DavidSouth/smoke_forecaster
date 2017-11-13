@@ -17,9 +17,83 @@ library(tidyverse)
 library(rgdal)
 library(raster)
 library(ncdf4)
+library(sf)
 
 # data import ------------------------------------------------------------------
 # section from the daily bluesky download where this code will be inserted
+
+# I need polygons to visualize the grids
+# define relative path to polygon file
+poly_path <- "./data/bluesky_grid"
+poly_layer <- "bluesky_grid"
+# county path
+co_path <- "./data/us_county"
+co_layer <- "us_county"
+
+# read in bluesky grid
+bluesky_grid <- st_read(dsn = poly_path, layer = poly_layer)
+# the bluesky grid does not have an ID so we will assign each cell a number
+bluesky_grid$id <- as.numeric(seq(1:94068))
+# read county polygons
+us_county <- st_read(dsn = co_path, layer = co_layer) %>% 
+  mutate(FIPS = paste0(STATEFP, COUNTYFP))
+
+summary(bluesky_grid)
+summary(us_county)
+plot(us_county$geometry)
+plot(bluesky_grid$geometry)
+
+al_autauga_county_sf <- us_county %>% 
+  filter(STATEFP == "01" & COUNTYFP == "001")
+
+plot(al_autauga_county_sf$geometry)
+# intersect
+autauga_intersect <- st_intersection(bluesky_grid, al_autauga_county_sf )
+
+autauga_grid <- bluesky_grid %>% 
+  filter(id %in% autauga_intersect$id)
+
+autauga_grid_id <- autauga_grid$id
+
+plot(autauga_intersect$geometry)
+plot(autauga_grid$geometry, add=T)
+
+area_estimate <- st_area(autauga_intersect)/st_area(autauga_grid)
+area_estimate
+
+# check proportion intersect
+autauga_pi <- grid_county_pi %>% 
+  dplyr::select(id, poly01001) %>% 
+  filter(poly01001 > 0)
+
+# population in this county
+autauga_grid_pop <- as.vector(pop_bluesky)[autauga_grid_id]
+autauga_grid_pop
+
+# san fran county fips 06075
+san_fran_sf <- us_county %>% 
+  filter(FIPS == "06075")
+
+sanfran_intersect <- st_intersection(bluesky_grid, sanfran_intersect)
+plot(sanfran_intersect$geometry)
+sanfran_grid_id <- sanfran_intersect$id
+
+sanfran_grid <- bluesky_grid %>% filter(id %in% sanfran_grid_id)
+
+plot(sanfran_grid$geometry)
+plot(san_fran_sf$geometry, add=T)
+
+sf_int_2 <- st_intersection(sanfran_grid, san_fran_sf)
+
+sf_pi <- st_area(sf_int_2)/st_area(sanfran_grid)
+sf_pi
+
+check_sf_pi <- grid_county_pi %>% 
+  dplyr::select(id, poly06075) %>% 
+  filter(poly06075 > 0)
+
+# this breaks on very small counties.
+# arghhhh okay. i think I need to go county by county.
 
 # smoke estimates by grid matrix -----------------------------------------------
 # working with the raster brick of the nc file

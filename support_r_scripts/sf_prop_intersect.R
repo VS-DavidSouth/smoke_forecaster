@@ -8,7 +8,9 @@
 # ------------------------------------------------------------------------------
 
 # General note: The sf package makes proportion intersect cacluations faster
-# and it can run on a personal computer rather than on a server. I
+# and it can run on a personal computer rather than on a server. 
+
+# NOTE 2017-11-13: the calulcations are off on small counties.
 
 # load libraries ---------------------------------------------------------------
 library(sf)
