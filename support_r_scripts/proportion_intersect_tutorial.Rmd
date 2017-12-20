@@ -20,10 +20,10 @@ library(sf)
 library(tidyverse)
 # load wrfgrid polygon ----
 # define relative path to polygon file
-poly_path <- "../data/bluesky_grid"
+poly_path <- "./data/bluesky_grid"
 poly_layer <- "bluesky_grid"
 # county path
-co_path <- "../data/us_county"
+co_path <- "./data/us_county"
 co_layer <- "us_county"
 
 # read in bluesky grid
@@ -175,6 +175,10 @@ for(i in 1:length(cali_county$FIPS)){
 # that was fast enough and easier to follow
 summary(prop_int_tibble)
 
+# set missing values to 0
+bluesky_california_intersect <- prop_int_tibble %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
 # plot
 ggplot(cali_county) + 
   geom_sf() +
@@ -182,44 +186,72 @@ ggplot(cali_county) +
   theme_bw()
 ```
 
-Next steps would be to figure out how to use the sf package with apply or map type functions.
+Checking LA county to see if estimates are similar.
+
+```{r la_check}
+la_county_tibble <- prop_int_tibble %>% 
+  select(grid_id,fips_06037) %>% 
+  # remove missing values
+  filter(!is.na(fips_06037))
+
+all.equal(la_county_tibble, la_grid)
+
+summary(la_county_tibble)
+summary(la_grid)
+```
+
+Next steps would be to figure out how to use the sf package with apply or map type functions. I think the for loop will work and so far apply and map don't work and I need to move on. I've saved the code I do have for now.
 
 ```{r purrr attempt, warning = F, eval = F}
-# define intersect function to output a vector 
-prop_int_fun <- function(x){
-  county <- x
-  # extract fips number for variable name
-  fips_id <- paste0("fips_", county$FIPS)
-  # subset grid cells that touch any part of the county
-  grid <- cali_grid[county,]
-  # output grid IDs
-  grid_id <- grid$id
-  # subset the intersected polygon
-  inter_poly <- st_intersection(st_geometry(grid),st_geometry(county))
-  # find proportion intersect with original grid
-  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid))
+proportion_intersect <- function(poly_sf, poly_id, grid_sf, grid_id){
+  # enquo lazy eval
+  poly_id <- enquo(poly_id)
+  grid_id <- enquo(grid_id)
+  # subset grid sf that contains poly_i
+  grid_i <- grid_sf[poly_sf,]
+  # set grid_i crs to poly_sf crs
+  standard_crs <- st_crs(poly_sf)
+  st_crs(grid_i) <- standard_crs 
+  # assume grid_i and poly_sf are constant
+  st_agr(poly_sf) = "constant"
+  st_agr(grid_i) = "constant"
+  # proportion intersect
+  intersect_sf <- st_intersection(grid_i, poly_sf) %>% 
+    # filter only to polygon or multipolygon type 
+    # to avoid errors with point or line types
+    filter(st_is(., c("POLYGON", "MULTIPOLYGON"))==T)
+  # calculation of proportion intersect
+  proportion <- as.numeric(st_area(intersect_sf)/st_area(grid_i)) %>% 
+    data_frame() %>% rename(proportion = ".")
+  # column bind the proportion to the intersect sf object
+  output_df <- intersect_sf %>% 
+    # eventually replace these with generic names
+    dplyr::select(!!grid_id, !!poly_id) %>% 
+    bind_cols(proportion)
+  # remove geometry
+  st_geometry(output_df) <- NULL
+  return(output_df)
 }
 
-# test of la county
-la_test <- prop_int_fun(la_county)
-
-y <- cali_county %>% 
-  group_by(FIPS) %>% 
-  nest
+?st_crs
+test <- cali_county %>% nest
 
 
+check <- proportion_intersect(poly_sf = test, poly_id = FIPS, 
+                              grid = bluesky_grid, grid_id = id)
 
-test1 <- lapply(1:nrow(cali_county), prop_int_fun)
+# purrr attempt
+prop_int_purrr <- test %>% 
+  lmap(~proportion_intersect(poly_sf = ., poly_id = FIPS, 
+                            grid = bluesky_grid, grid_id = id))
+
+apply(test,1, function(x) st_area(x))
 
 
-test <- sapply(x$geometry, prop_int_fun)
+map(test, function(x) st_area(x))
 
-
-test3 <- cali_county %>% 
-  group_by(FIPS) %>% 
-  lmap(prop_int_fun)
-
-test_apply <- lapply(cali_county, prop_int_fun)
+st_crs(test)
+st_crs(bluesky_grid)
 ```
 
 
