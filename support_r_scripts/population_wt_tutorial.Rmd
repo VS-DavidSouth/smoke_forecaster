@@ -1,0 +1,124 @@
+---
+title: "Population-Weighting Tutorial"
+author: "Ryan Gan"
+date: "12/21/2017"
+output: html_document
+---
+
+Calculate population-weighted smoke PM2.5 estimates.
+Background here.
+Smoke from the big fire in Norther California on 2017-10-11.
+
+Enter formula here.
+```{r setup}
+library(tidyverse) 
+library(sf)
+
+# knitr options
+knitr::opts_chunk$set(fig.width=8, fig.height=6, warning=FALSE, message=FALSE)
+```
+
+Read in the following files: California county sf object, Bluesky grid sf object subsetted to California, Bluesky smoke PM~2.5~ estimates, proportion intersect between counties and bluesky grid cells, and population densities.
+
+```{r read_data}
+# read smoke pm estimate for grid 
+smk_pm <- read_csv('./data/example_data/2017-10-11_california_bluesky_pm.csv')
+
+# read population estimates for grid
+# this if finally right; save it
+cal_population <- read_csv(paste0("./data/example_data/",
+  "2015-california_grid_population.csv"))
+
+# 4480 rows and 1 column (pm values)
+# read sf files 
+grid_path <- "./data/example_data/california_bluesky"
+grid_layer <- "california_bluesky"
+# county path
+poly_path <- "./data/example_data/california_county"
+poly_layer <- "california_county"
+
+# read in bluesky grid
+bluesky_grid <- st_read(dsn = grid_path, layer = grid_layer) %>% 
+  dplyr::select(-layer_1) %>% 
+  dplyr::left_join(smk_pm, by = c("id"="grid_id")) %>% 
+  dplyr::left_join(cal_population, by = "id")
+  # cap at 250, taking out for now 
+  # dplyr::mutate(pm = ifelse(pm > 250, 250, pm))
+# read county polygons
+cali_county <- st_read(dsn = poly_path, layer = poly_layer)
+
+# read proportion intersect
+grid_county_pi <- read_csv("./data/example_data/cali_bluesky_pi.csv",
+    col_types = cols(.default = col_character())) %>% 
+  mutate_all(as.numeric)
+```
+
+Plot of smoke during October 11th. 
+
+```{r smoke_plot}
+# visualize
+ggplot(bluesky_grid) +
+  geom_sf(aes(fill=pm)) +
+    scale_fill_gradient2(name="Smoke PM2.5", 
+      low="black", mid="#89fffd", high="#ef32d9", midpoint = 200) +
+  geom_sf(data=cali_county, color = "red", alpha = 0)
+# looks okay
+
+
+bluesky_grid <- bluesky_grid %>% 
+  left_join(cal_population, by = "id")
+
+# plot popluation density to see if it looks correct
+ggplot(bluesky_grid) +
+  geom_sf(aes(fill = popden)) +
+  geom_sf(data=cali_county, aes(color = "red"), alpha = 0)
+# that looks much better
+
+plot(bluesky_grid)
+
+# set up matrices used -----
+
+
+# proportion intersect between county and grid matrix
+pi_mat <- as.matrix(grid_county_pi[,2:59])
+rownames(pi_mat) <- grid_county_pi$grid_id
+
+# pm value vector (duplicating to two rows to test the next day)
+pm_mat <- as.matrix(cbind(cali_mean_pm_smk$pm, cali_mean_pm_smk$pm))
+# population density value vector
+popden <- cal_population$popden
+# multiply population vector by pm vector
+pm_pop_mat <- popden * pm_mat
+
+# multiply pm population matrix by zip population vector to get a summed
+# estimate of pm exposure that day
+county_grid_pm_mat <- t(pi_mat) %*% pm_pop_mat
+
+dim(county_grid_pm_mat)
+# estimate the population density per county
+popden_county <- t(pi_mat) %*% popden
+
+# calculate the inverse of the popden_couty matrix
+popden_county_inverse <- 1/popden_county
+
+# population weighted estimates for each county for same-day and next-day
+# multiply by a vector of the inverse population density for each county
+# final product
+county_pop_wt_smk <- county_grid_pm_mat * as.vector(popden_county_inverse) 
+
+# create dataframe
+pm_county_wt <- as_data_frame(county_pop_wt_smk) %>% 
+  rename(same_day = V1, next_day = V2) %>% 
+  mutate(FIPS = as.character(stringr::str_sub(rownames(county_pop_wt_smk), 
+                                              start = 6L)))
+
+# join pop wt estimates
+cali_county <- cali_county %>% 
+  left_join(pm_county_wt, by = "FIPS")
+
+# plot population-weighted smoke
+ggplot(cali_county) +
+  geom_sf(aes(fill=same_day))
+
+```
+

@@ -44,23 +44,51 @@ For this example, we'll take it to a much smaller scale: the state of California
 
 We'll also check the plots of each object to make sure we have what we need.
 
-```{r california subset}
+```{r california_subset}
 # subset to california by FIPS code "06"
 cali_county <- us_county[us_county$STATEFP=="06", ] %>% 
   # making a FIPS ID that I'll use later
   mutate(FIPS = paste0(STATEFP, COUNTYFP))
-# subset the bluesky grid to  grid cells that intersect a california county
-cali_grid <- bluesky_grid[cali_county, ]
+
+# clip by bbox function ------
+bbox_clip <- function(sf, bbox) {
+  # find the CRS of the sf object
+  crs <- sf::st_crs(sf)$proj4string
+  # create matrix
+  x <- c(bbox[1], bbox[1], bbox[3], bbox[3], bbox[1])
+  y <- c(bbox[2], bbox[4], bbox[4], bbox[2], bbox[2])
+  coords <- matrix(cbind(x, y), ncol=2)
+  # create polygon and assign same coord crs as sf object
+  coords_poly <- sp::Polygon(coords)
+  bbox_poly <- sp:: SpatialPolygons(list(sp::Polygons(list(coords_poly),
+    ID = "bbox")), proj4string = sp::CRS(crs))
+  # convert to sf feature
+  bbox_sf <- st_as_sf(bbox_poly)
+  # clip sf object
+  clipped_sf <- sf[bbox_sf,]
+  return(clipped_sf)
+}
+
+cali_bbox <- st_bbox(cali_county)
+
+# subset a smaller bluesky grid
+cali_grid <- bbox_clip(bluesky_grid, cali_bbox)
 
 # plot
 ggplot(cali_county) + 
   geom_sf() +
   geom_sf(data=cali_grid, aes(), alpha = 0.0) +
   theme_bw()
+
+# write the two sf files for california to save for example
+# st_write(cali_county, paste0("./data/example_data/",
+#   "california_county/california_county.shp"))
+# 
+# st_write(cali_grid, paste0("./data/example_data/california_bluesky/",
+#                            "california_bluesky.shp"))
 ```
 
 Looks like we have all the grids we need for the state of California. Let's move on to the proportion of intersection between each county and grid in each state. 
-
 ## Proportion intersect calcuations
 
 Before we apply a function to the whole state, we'll subset start small with one county and grids in that county. I do this for a couple reasons. The first is I can test if my code is working on a small subset on my laptop before moving it to the server. The second is that it is easy to scale it up and use *apply* functions to apply the formula for each grid and county (for the entire US, eventually). The last reason is that I'll check the final matrix for the grid ids for that particular county to make sure they line up with these calculations here.
@@ -152,7 +180,8 @@ prop_int_tibble <- cali_grid$id %>%
   tibble() %>% 
   rename(grid_id = ".")
 
-# turning this in to a for loop because i'm annoyed
+start_time <- Sys.time()
+
 for(i in 1:length(cali_county$FIPS)){
   # subset county to find intersect
   county <- slice(cali_county, i)
@@ -160,30 +189,39 @@ for(i in 1:length(cali_county$FIPS)){
   fips_id <- paste0("fips_", county$FIPS)
   # subset grid cells that touch any part of the county
   grid <- cali_grid[county,]
-  # output grid IDs
-  grid_id <- grid$id
   # subset the intersected polygon
-  inter_poly <- st_intersection(st_geometry(grid),st_geometry(county))
+  inter_poly <- st_intersection(grid, county) %>% 
+    # filter only to polygon or multipolygon type 
+    # to avoid errors with point or line types
+    filter(st_is(., c("POLYGON", "MULTIPOLYGON"))==T)
+  # filter grid ids to only grids in the inter_poly object
+  grid2 <- grid %>% filter(id %in% inter_poly$id) 
   # find proportion intersect with original grid
-  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid))
+  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid2))
+  # subset grid id
+  grid_id <- grid2$id
   # make a tibble
-  prop_int_tibble <- tibble(grid_id, prop_int) %>% 
-    set_names(c("grid_id", fips_id)) %>% 
-    right_join(prop_int_tibble, by = "grid_id")
+  county_grid_int <- tibble(grid_id, prop_int) %>% 
+    set_names(c("grid_id", fips_id))
+  # join with full tibble
+  prop_int_tibble <- prop_int_tibble %>% 
+    left_join(county_grid_int, by = "grid_id")
 } # end loop
 
-# that was fast enough and easier to follow
-summary(prop_int_tibble)
+# stop cluster
+#stopCluster(cl)
 
-# set missing values to 0
-bluesky_california_intersect <- prop_int_tibble %>% 
+stop_time <- Sys.time()
+compute_time <- stop_time - start_time
+# run time
+compute_time
+
+# set missing NA values to 0
+cali_bluesky_pi <- prop_int_tibble %>% 
   mutate_all(funs(replace(., is.na(.), 0)))
 
-# plot
-ggplot(cali_county) + 
-  geom_sf() +
-  geom_sf(data=cali_grid, aes(), alpha = 0.0) +
-  theme_bw()
+# save file for a vignette
+write_csv(cali_bluesky_pi, paste0("./data/example_data/cali_bluesky_pi.csv"))
 ```
 
 Checking LA county to see if estimates are similar.
@@ -252,6 +290,43 @@ map(test, function(x) st_area(x))
 
 st_crs(test)
 st_crs(bluesky_grid)
+
+# extracting population densities from bonne's bluesky grid -----
+# i will move it later
+
+pop_nc <- ncdf4::nc_open("./data/blueskypopulation.nc")
+
+cali_id <- bluesky_grid$id
+# extract population and population density for california grid cells
+pop <- as.vector(ncdf4::ncvar_get(pop_nc, varid = "Population"))
+popden <- as.vector(ncdf4::ncvar_get(pop_nc, varid ="PopulationDensity"))
+
+# extract latlon
+lat <- ncdf4::ncvar_get(pop_nc, varid ="latitude")
+lon <- ncdf4::ncvar_get(pop_nc, varid = "longitude")
+# expand grid
+lonlat <- as.matrix(expand.grid(lon,lat))
+
+# create population dataframe and add names
+population_df <- data.frame(cbind(lonlat, pop, popden))
+# assign names
+names(population_df) <- c("lon", "lat", "pop", "popden")
+
+# sf label starts top left and goes right, then down one row
+# sort by desc(lat) then lon to match how i labeled the sf objects
+population_df <- population_df %>%  
+  arrange(desc(lat), lon) %>% 
+  mutate(id = seq(1:94068))
+
+# now I think i can subset to california by row number
+cal_population <- population_df %>% 
+  filter(id %in% cali_id) %>% 
+  dplyr::select(id, lon, lat, pop, popden)
+
+# this if finally right; save it
+write_csv(cal_population, paste0("./data/example_data/",
+                                 "2015-california_grid_population.csv"))
+
 ```
 
 
