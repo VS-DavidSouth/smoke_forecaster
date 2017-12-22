@@ -132,6 +132,10 @@ ggplot(cali_county) +
       low="#03001e", mid="#ec38bc", high="#fdeff9", midpoint = 200) +
   geom_sf(data=cali_county, color = "white", alpha = 0) +
   theme_minimal()
+
+# save file; commenting out after save
+# write_csv(pm_county_wt, paste0("./data/example_data/",
+#                                "2017-10-11_popwt_pm_county.csv"))
 ```
 
 Now I need to work on the HIA component of this.
