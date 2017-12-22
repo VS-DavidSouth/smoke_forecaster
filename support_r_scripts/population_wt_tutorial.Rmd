@@ -87,8 +87,10 @@ Setting up matrices and vectors for some linear algebra.
 pi_mat <- as.matrix(grid_county_pi[,2:59])
 rownames(pi_mat) <- grid_county_pi$grid_id
 
+
+
 # pm value vector (duplicating to two rows to test the next day)
-pm_mat <- as.matrix(cbind(cali_mean_pm_smk$pm, cali_mean_pm_smk$pm))
+pm_mat <- as.matrix(cbind(smk_pm$pm, smk_pm$pm))
 # population density value vector
 popden <- cal_population$popden
 # multiply population vector by pm vector
@@ -98,7 +100,6 @@ pm_pop_mat <- popden * pm_mat
 # estimate of pm exposure that day
 county_grid_pm_mat <- t(pi_mat) %*% pm_pop_mat
 
-dim(county_grid_pm_mat)
 # estimate the population density per county
 popden_county <- t(pi_mat) %*% popden
 
@@ -115,8 +116,6 @@ pm_county_wt <- as_data_frame(county_pop_wt_smk) %>%
   rename(same_day = V1, next_day = V2) %>% 
   mutate(FIPS = as.character(stringr::str_sub(rownames(county_pop_wt_smk), 
                                               start = 6L)))
-
-
 ```
 
 County population-weighted smoke PM~2.5~ estimates.
@@ -128,7 +127,11 @@ cali_county <- cali_county %>%
 
 # plot population-weighted smoke
 ggplot(cali_county) +
-  geom_sf(aes(fill=same_day))
-
+    geom_sf(aes(fill=same_day)) +
+    scale_fill_gradient2(name="Pop Wt Smoke PM2.5", 
+      low="#03001e", mid="#ec38bc", high="#fdeff9", midpoint = 200) +
+  geom_sf(data=cali_county, color = "white", alpha = 0) +
+  theme_minimal()
 ```
 
+Now I need to work on the HIA component of this.
