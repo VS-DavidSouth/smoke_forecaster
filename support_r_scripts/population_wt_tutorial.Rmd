@@ -53,32 +53,36 @@ grid_county_pi <- read_csv("./data/example_data/cali_bluesky_pi.csv",
   mutate_all(as.numeric)
 ```
 
-Plot of smoke during October 11th. 
+Plot of smoke during October 11th. There are some cells with very high values that I usually cap for display purposes.
 
 ```{r smoke_plot}
 # visualize
 ggplot(bluesky_grid) +
   geom_sf(aes(fill=pm)) +
     scale_fill_gradient2(name="Smoke PM2.5", 
-      low="black", mid="#89fffd", high="#ef32d9", midpoint = 200) +
-  geom_sf(data=cali_county, color = "red", alpha = 0)
+      low="#03001e", mid="#ec38bc", high="#fdeff9", midpoint = 400) +
+  geom_sf(data=cali_county, color = "white", alpha = 0) +
+  theme_minimal()
 # looks okay
+```
 
+Let's see where most people live in the state of California.
 
-bluesky_grid <- bluesky_grid %>% 
-  left_join(cal_population, by = "id")
-
+```{r popdensity_map}
 # plot popluation density to see if it looks correct
 ggplot(bluesky_grid) +
   geom_sf(aes(fill = popden)) +
-  geom_sf(data=cali_county, aes(color = "red"), alpha = 0)
+    scale_fill_gradient2(name="Population Density per km^2", 
+      low="#2c3e50", mid="#00c9ff", high="#92fe9d", midpoint = 2000) +
+  geom_sf(data=cali_county, color = "white", alpha = 0) +
+  theme_minimal()
 # that looks much better
+```
 
-plot(bluesky_grid)
+Now we'll calculate population-weighted PM~2.5~, which as the name suggests, weights smoke values in each county based on where most people live.
 
-# set up matrices used -----
-
-
+Setting up matrices and vectors for some linear algebra.
+```{r population_wt}
 # proportion intersect between county and grid matrix
 pi_mat <- as.matrix(grid_county_pi[,2:59])
 rownames(pi_mat) <- grid_county_pi$grid_id
@@ -112,7 +116,13 @@ pm_county_wt <- as_data_frame(county_pop_wt_smk) %>%
   mutate(FIPS = as.character(stringr::str_sub(rownames(county_pop_wt_smk), 
                                               start = 6L)))
 
-# join pop wt estimates
+
+```
+
+County population-weighted smoke PM~2.5~ estimates.
+
+```{r popwt_plot}
+# join pop wt county smoke estimates
 cali_county <- cali_county %>% 
   left_join(pm_county_wt, by = "FIPS")
 
