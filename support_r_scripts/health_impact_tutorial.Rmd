@@ -1,0 +1,18 @@
+---
+title: "Californian fires HIA"
+author: "Ryan Gan"
+date: "12/28/2017"
+output: html_document
+---
+
+HIA formula
+delta_y = daily_baseline_rate x (1-e^-beta x delta_smk) x county pop at risk
+
+Things I have:
+- beta and population-weighted delta smk
+- county pop at risk (easy enough to get and i'll need it for the rate)
+
+Things I need:
+- Daily ED rate for outcomes of interest; i can calculate this from the data I have from colorado, washington, and oregon.
+
+

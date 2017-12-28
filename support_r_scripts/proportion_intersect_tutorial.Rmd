@@ -5,13 +5,15 @@ date: "10/12/2017"
 output: html_document
 ---
 
-## Introduction and setup
-
-This is example code on using the relatively new "sf" simple features package. Perviously, I have used the sp, rgeos, and rgdal package for many spatial tasks/calculations. Use of sf allows for a faster and more memory-efficient way to perform spatial tasks. From what I can tell, the major difference is that a simple feature is more like a dataframe rather than a spatial polygon object. This would explain why it's more memory efficient. Another very attractive feature is that "sf" follows tidy principles for data manipulation and managment, and is compatible with the tidyverse. For this, I use the development version of ggplot2 to access the geom_sf feature. I expect "sf" and tidyverse to work even better together in the future.
+## Introduction 
 
 This document focuses on calculation of the intersection between two spatial polygons (shapefiles). The reason I want to calculation the intersection is so that I could population weight PM~2.5~ values based on grid cells for a given politcal boundary, in this case, county. This is my first time taking the "sf" package for a go and I'm excited about it's potential. 
 
-Let's read in the shapefile polygons for the Bluesky smoke forecasting grid and the polygons for United States counties (excluding Alaska and Hawaii).
+## Reading in county shapefile and grid as simple features (sf) 
+
+This is example code on using the relatively new "sf" simple features package. Perviously, I have used the sp, rgeos, and rgdal package for many spatial tasks/calculations. Use of sf allows for a faster and more memory-efficient way to perform spatial tasks. From what I can tell, the major difference is that a simple feature is a dataframe with information on the geometry as part of the observation, rather than a spatial polygon object. This would explain why it's more memory efficient. Another very attractive feature is that "sf" follows tidy principles for data manipulation and managment, and is compatible with the tidyverse. For this, I use the development version of ggplot2 to access the geom_sf feature. I expect "sf" and tidyverse to work even better together in the future.
+
+Let's read in the shapefile polygons as simple features for the Bluesky smoke forecasting grid and the polygons for United States counties (excluding Alaska and Hawaii).
 
 ```{r setup}
 # trying out sf for the first time
@@ -34,9 +36,9 @@ bluesky_grid$id <- as.numeric(seq(1:94068))
 us_county <- st_read(dsn = co_path, layer = co_layer)
 ```
 
-Now that we've read in the two polygons, it looks like there are some unique features to the sf package vs some other packages like rgdal or rgeos. It looks like the imported simple features object contains more information than the simple polygon, which is cool. I haven't plotted the entire US and the Bluesky grid because it's hard to see, but I usually do this as a check.
+Now that we've read in the two polygons, it looks like there are some unique features to the sf package vs some other packages like rgdal or rgeos. It looks like the imported simple features object contains more information than the simple polygon, which is cool. I haven't plotted the entire US county shapefile and the Bluesky grid because it's hard to see, but with smaller shapefiles and grids, I usually do this as a check.
 
-## Subsetting specific polygons
+## Subsetting specific polygons (California)
 
 In the past, we calculated the proportion of intersection between each county polygon and grid cell for one state, which worked fine. However, when we try to apply the same method to the entire US, we ran in to what I think were memory problems (stack overflow?), and we were never able to get our desired product, a matrix of the proportion intersect for each cell id and county id. This was on a relatively decent high-performance computer too running in parallel and definately wouldn't work on your standard desktop or laptop. To solve this problem, we'll subset each state and only the cell grids of that state, which should reduce our memory use substantially. We can save the matrix for each state, free up the memory used, and start again with a new state. We can then combine all the matrices from each state to get our desired matrix. 
 
@@ -89,13 +91,14 @@ ggplot(cali_county) +
 ```
 
 Looks like we have all the grids we need for the state of California. Let's move on to the proportion of intersection between each county and grid in each state. 
-## Proportion intersect calcuations
+
+## Proportion intersect calcuations for Los Angeles county
 
 Before we apply a function to the whole state, we'll subset start small with one county and grids in that county. I do this for a couple reasons. The first is I can test if my code is working on a small subset on my laptop before moving it to the server. The second is that it is easy to scale it up and use *apply* functions to apply the formula for each grid and county (for the entire US, eventually). The last reason is that I'll check the final matrix for the grid ids for that particular county to make sure they line up with these calculations here.
 
 I'm going to pick Los Angeles county since it's small and has some islands. We can subset in the same way we did before.
 
-```{r la county subset, warning = F}
+```{r la_subset, warning = F}
 # subset orange county by fips code
 la_county <- cali_county[cali_county$COUNTYFP=="037",]
 # subset grids to orange county
@@ -115,13 +118,14 @@ st_geometry(grid_names) <- NULL
 ggplot() + 
   geom_sf(data = la_county) +
   geom_sf(data=la_grid, alpha = 0.0) +
-  geom_text(data=grid_names, aes(x=lon, y=lat, label=id), size = 2.5, angle=45)+
+  geom_text(data=grid_names, aes(x=lon, y=lat, label=id), size = 2.5,
+            angle=45)+
   theme_bw()
 ```
 
 We'll calculate the proportion intersection of one grid, 55299, for the upper part of LA county.
 
-```{r proportion intersect, warning=F}
+```{r proportion_intersect, warning=F}
 # first find the intersection between the two shapes
 intersect_sf <- st_intersection(la_county, la_grid[1,])
 # find the proportion intersect by subtracting the area of the intersection
@@ -135,7 +139,7 @@ Since "sf" brings in polygons as simple features as a data frame instead of mult
 
 Calculating the proportion intersect between all grids in LA county with LA county is as simple as putting the whole grid in the intersect function. Before, I had to subset each grid and find each intersection with the county polygon, which took a lot longer.
 
-```{r intersection, warning=F}
+```{r la_intersection, warning=F}
 # sf might make this easier since each object comes in as a dataframe and not
 # a bunch of little polygons as part of a big polygon
 # find intersection of grid for the county
@@ -169,7 +173,7 @@ I calculated the intersection for each grid with the county shape, plotted a gra
 
 Try it out on the state of California. I don't think I can use purrr map functions yet. I'll use a for loop.
 
-```{r grid intersect for cali for loop, warning=F}
+```{r california_intersect, warning=F}
 # I had some problems feeding the sf object directly in to the function when I
 # tried to use the apply or map functions, which led me to think purrr and map
 # were not compatible yet. If I feed in a vector of the state/county fips,
