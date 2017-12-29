@@ -5,6 +5,8 @@ date: "12/28/2017"
 output: html_document
 ---
 
+## Introduction
+
 HIA formula
 delta_y = daily_baseline_rate x (1-e^-beta x delta_smk) x county pop at risk
 
@@ -12,7 +14,108 @@ Things I have:
 - beta and population-weighted delta smk
 - county pop at risk (easy enough to get and i'll need it for the rate)
 
-Things I need:
-- Daily ED rate for outcomes of interest; i can calculate this from the data I have from colorado, washington, and oregon.
+## Things I need:
+- Daily ED rate for outcomes of interest; i can calculate this from the data I have from colorado, washington, and oregon. 
+- Estimate only association between smoke and ED for big time-serieis analysis
 
+
+In the mean time I'm going to use estimates from this CDC table from 2014.
+https://www.cdc.gov/nchs/data/nhamcs/web_tables/2014_ed_web_tables.pdf
+
+All ED visits are estimated at 45.1 per 100 persons per year. Std error is estimated at 3.7 for this rate.
+
+Respiratory ED visits are estimate to make up 10.4% of the ED visits. Std error is estimated at 0.4.
+
+I calculated the daily respiratory ed visit rate to be 1.285 x 10^-4, or 1.285/10000 persons. 
+
+This is not ideal as I have no idea about specific conditions like asthma; I will estimate these from data I have, but for now it will let me add it to the demo.
+
+## Read data
+
+Population-weighted smoke data from 2017-10-11.
+
+```{r setup}
+library(tidyverse) 
+library(stringr)
+library(rgdal) # for testing to write polygon
+library(sf)
+library(sp)
+
+# knitr options
+knitr::opts_chunk$set(fig.width=8, fig.height=6, warning=FALSE, message=FALSE)
+```
+
+```{r read_data}
+# county path
+poly_path <- "./data/example_data/california_county"
+poly_layer <- "california_county"
+# read county polygons
+cali_county <- st_read(dsn = poly_path, layer = poly_layer)
+# read bluesky forecast polygon
+cali_shape <- readOGR(dsn = poly_path, layer = poly_layer)
+
+# read population weighted smk 
+county_smk_pm <- read_csv("./data/example_data/2017-10-11_popwt_pm_county.csv")
+# read in california county population
+county_pop <- read_csv(paste0("./data/example_data/",
+  "2015-california_population.csv")) 
+# daily respiratory rate; no asthma rate
+resp_rate <- 1.285/10000
+# beta for respiratory CR function
+resp_beta <- log(1.052)
+# read cali polygon
+
+```
+
+Estimation of county respiratory ED visits.
+
+```{r county_resp}
+# set up hia dataframe for each county
+hia_est <- county_pop %>% 
+  mutate(pop_2015 = as.numeric(respop72015)) %>% 
+  dplyr::select(FIPS, pop_2015) %>% 
+  left_join(county_smk_pm, by = "FIPS") %>% 
+  mutate(base_rate = resp_rate,
+         beta = resp_beta,
+         resp_y = round((base_rate * (1-exp(-(beta)*same_day)) * pop_2015),0))
+```
+
+Smoke map.
+
+```{r smoke_map}
+# join smoke estimates and HIA estimates to sf file
+# this will have to be to a spatial polygon 
+cali_county <- cali_county %>% 
+  left_join(hia_est, by = "FIPS")
+
+# plot population-weighted smoke
+ggplot(cali_county) +
+    geom_sf(aes(fill=same_day)) +
+    scale_fill_gradient2(name="Pop Wt Smoke PM2.5", 
+      low="#03001e", mid="#ec38bc", high="#fdeff9", midpoint = 200) +
+  geom_sf(data=cali_county, color = "white", alpha = 0) +
+  theme_minimal()
+```
+
+HIA map.
+
+```{r hia_map}
+ggplot(cali_county) +
+    geom_sf(aes(fill=resp_y)) +
+    scale_fill_gradient(name="Resp ED", 
+      low="#191654", high="#43c6ac") +
+  geom_sf(data=cali_county, color = "white", alpha = 0) +
+  theme_minimal()
+
+# commenting out and will work this in to daily script
+# # join smoke to shapefile; sp merge should work
+# cali_poly <- sp::merge(cali_shape, hia_est, by = "FIPS")
+# # write spatialy poly
+# writeOGR(obj = cali_poly, dsn = "./data/example_data/hia_poly", 
+#          layer = "hia_poly", driver = "ESRI Shapefile", overwrite_layer = T)
+```
+
+Thoughts:
+- Monte-carlo for bounds?
+- Future association study should be place of service specific (don't mix Ed and urgent care).
 
