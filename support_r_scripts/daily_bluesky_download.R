@@ -177,7 +177,12 @@ save(date_labels, file = paste0(home_path,"/data/date_label.RData"))
 
 # create raster brick and create spatial polygon ----
 # make raster brick of same_day and next_day mean smoke
-smoke_stack <- brick(same_day_mean_smk,next_day_mean_smk)
+smoke_stack <- brick(same_day_mean_smk, next_day_mean_smk)
+
+# create pm matrix of same-day and next-day values -----
+# this will be used later for population-weighting
+pm_mat <- as.matrix(cbind(same_day_mean_smk@data@values, 
+                          next_day_mean_smk@data@values))
 
 # convert smoke_stack to polygon/shape
 smk_poly <- rasterToPolygons(smoke_stack)
@@ -194,19 +199,105 @@ smk_poly <- rasterToPolygons(smoke_stack)
 # to make polygon file smaller and easier to project
 smk_poly <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
 
-# Calculate population-weighted county smk pm2.5 values ------------------------
-# Read in proportion-intersect matrix between grid and county shapes
-grid_county_pi <- read_csv("./data/bluesky_county_prop_intersect.csv",
-                           col_types = cols(.default = col_character())) %>% 
-  mutate_all(as.numeric)
-
-# Calculate health impact of given smoke concentration ------------------------- 
 # remove raster files to save space
 rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
    next_day_mean_smk, smoke_stack)
 
-# write smoke polygon ----------------------------------------------------------
+# Write gridded smoke polygon --------------------------------------------------
 writeOGR(obj = smk_poly, dsn = paste0(home_path,"/data/smk_poly"), 
          layer = "smk_poly", driver = "ESRI Shapefile", overwrite_layer = T)
 
+# remove smk poly to save room
+rm(smk_poly)
 
+# Calculate population-weighted county smk pm2.5 values ------------------------
+# Read in proportion-intersect matrix between grid and county shapes
+grid_county_pi <- data.table::fread("./data/bluesky_county_prop_intersect.csv")
+
+# convert to matrix
+pi_mat <- as.matrix(grid_county_pi[,2:3109])
+# remove grid_county_pi to save space
+rm(grid_county_pi)
+
+# population density value vector
+# read 2015 bluesky population density
+population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
+# create vector of population density
+popden <- population_grid$popden 
+
+# multiply population vector by pm vector
+pm_pop_mat <- popden * pm_mat
+
+# matrix multiply prop int matrix by population vector for daily summed pm
+county_grid_pm_mat <- t(pi_mat) %*% pm_pop_mat
+
+# matrix multiply prop int matrix by popden vector for popden per county
+popden_county <- t(pi_mat) %*% popden
+
+# calculate the inverse of popden_county matrix
+popden_county_inverse <- 1/popden_county
+
+# multiply county_grid_pm_mat by inverse population vector to estimate 
+# county population-weighted estimate 
+county_pop_wt_smk <- county_grid_pm_mat * as.vector(popden_county_inverse)
+
+# save as dataframe
+pm_county_wt <- as.data.frame(county_pop_wt_smk)
+# name variables
+colnames(pm_county_wt) <- c("same_day_pm", "next_day_pm")
+# create FIPS variable
+pm_county_wt$FIPS <- as.character(str_sub(rownames(pm_county_wt), start=6L))
+
+# remove matrices to save space
+rm(county_grid_pm_mat, county_pop_wt_smk, pi_mat, pm_mat, popden,
+   pm_pop_mat, popden_county, popden_county_inverse, population_grid)
+
+# Calculate health impact of given smoke concentration ------------------------- 
+
+# read county populations
+county_pop <- data.table::fread(paste0("./data/us_census_county_population/",
+  "PEP_2015_PEPANNRES_with_ann.csv"))[-1, c(2,11)]
+
+# assign names: FIPS and pop_2015
+colnames(county_pop) <- c("FIPS", "pop_2015")
+# assign pop_2015 as numeric
+county_pop$pop_2015 <- as.numeric(county_pop$pop_2015)
+# subset counties in smoke values
+county_pop <- county_pop[county_pop$FIPS %in% pm_county_wt$FIPS, ]
+
+# merge population with smk pm values
+hia_est <- merge(county_pop, pm_county_wt, by = "FIPS")
+# add in base_rate; this will be changed but i need to calculate this
+hia_est$base_resp_rate <- 1.285/10000 
+# add beta based on our work
+hia_est$resp_beta <- log(1.052)
+# calculate expected respiratory ED visits
+hia_est$same_day_resp_ed <- round((hia_est$base_resp_rate * 
+  (1-exp(-(hia_est$resp_beta) * hia_est$same_day_pm)) * hia_est$pop_2015),0)
+# next day
+hia_est$next_day_resp_ed <- round((hia_est$base_resp_rate * 
+  (1-exp(-(hia_est$resp_beta) * hia_est$next_day_pm)) * hia_est$pop_2015),0)
+
+# considering a monte-carlo; not sure it's worth it now
+
+# Create hia shapefile for smoke_forecaster app --------------------------------
+
+# read in shapefile
+# county path
+poly_path <- "./data/us_county"
+poly_layer <- "us_county"
+
+# read county polygon
+us_shape <- readOGR(dsn = poly_path, layer = poly_layer)
+# add fips variable to join
+us_shape$FIPS <- us_shape$GEOID
+
+# join popwt pm and hia estimates to shapefile
+us_shape <- sp::merge(us_shape, hia_est, by = "FIPS")
+
+# subset to counties with popwt smk values > 1; may need to adjust
+us_shape <- us_shape[us_shape$same_day_pm > 1 | us_shape$next_day_pm > 1, ]
+
+# save shape with hia estimates
+writeOGR(obj = us_shape, dsn = paste0(home_path,"/data/hia_poly"), 
+         layer = "hia_poly", driver = "ESRI Shapefile", overwrite_layer = T)
