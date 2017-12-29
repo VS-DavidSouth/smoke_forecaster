@@ -87,8 +87,6 @@ Setting up matrices and vectors for some linear algebra.
 pi_mat <- as.matrix(grid_county_pi[,2:59])
 rownames(pi_mat) <- grid_county_pi$grid_id
 
-
-
 # pm value vector (duplicating to two rows to test the next day)
 pm_mat <- as.matrix(cbind(smk_pm$pm, smk_pm$pm))
 # population density value vector
