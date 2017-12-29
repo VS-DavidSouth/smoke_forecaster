@@ -278,6 +278,8 @@ hia_est$same_day_resp_ed <- round((hia_est$base_resp_rate *
 hia_est$next_day_resp_ed <- round((hia_est$base_resp_rate * 
   (1-exp(-(hia_est$resp_beta) * hia_est$next_day_pm)) * hia_est$pop_2015),0)
 
+# Notes on HIA: 2017-12-29
+# need to rename hia_estimate column names to avoid truncation when saving polygon
 # considering a monte-carlo; not sure it's worth it now
 
 # Create hia shapefile for smoke_forecaster app --------------------------------
@@ -295,8 +297,17 @@ us_shape$FIPS <- us_shape$GEOID
 # join popwt pm and hia estimates to shapefile
 us_shape <- sp::merge(us_shape, hia_est, by = "FIPS")
 
-# subset to counties with popwt smk values > 1; may need to adjust
-us_shape <- us_shape[us_shape$same_day_pm > 1 | us_shape$next_day_pm > 1, ]
+# subset to counties with hia estimates of at least 1
+us_shape <- us_shape[us_shape$same_day_resp_ed > 1 | 
+                       us_shape$next_day_resp_ed > 1, ]
+
+# rename truncated variable names; renamed hia estimates to layer_1 and layer_2
+# to match gridded bluesky forecasts of smoke labels
+c_names <- colnames(us_shape@data)
+c_names[11:17] <- c("Pop", "Day1Pm", "Day2Pm", "RespRt", 
+                    "RespB", "layer_1", "layer_2")
+
+colnames(us_shape@data) <- c_names
 
 # save shape with hia estimates
 writeOGR(obj = us_shape, dsn = paste0(home_path,"/data/hia_poly"), 

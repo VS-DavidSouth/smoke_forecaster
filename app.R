@@ -27,9 +27,19 @@ poly_layer <- "smk_poly"
 # read bluesky forecast polygon
 smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
 
-# set upper bound to 250
+# set upper bound to 250; think about this
 smk_forecast[smk_forecast$layer_1 >= 250, ] <- 249
 smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
+
+# read in hia estimate ----
+hia_path <- "./data/hia_poly"
+hia_layer <- "hia_poly"
+# hia polygon
+
+county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
+
+# Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
+# to reconcile cap of grid values polygon with this
 
 # default leaflet projection
 # commented out for now
@@ -38,7 +48,7 @@ smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 #test <- spTransform(smk_forecast, CRS(grs80))  
 #test
 
-# define color bin for layer ----
+# define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
 bin <- c(0, 10, 20, 30, 40, 50, 100, 250)
 pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
@@ -54,6 +64,16 @@ asthma_bin <- round(exp((bin/10)*0.0733),2)
 # asthma pal 
 asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
                      bins = asthma_bin, na.color = "transparent")
+
+# define color bin for hia estimates
+# i do not think these values will exceed 300... but it could happen
+hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
+# hia pallet
+hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), domain = c(1, max(hia_bin)),
+                    bins = hia_bin, na.color="transparent")
+  
+# Note 2017-12-29: Think about the best way to represent the scales;
+# it may be okay to redefine them every day
 
 # read in saved R dates ----
 load("./data/date_label.RData")
@@ -129,17 +149,10 @@ server <- (function(input, output){
         addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
           title = htmltools::HTML("Respiratory <br> Relative Risk"),
         position = "bottomright") 
-      # trying layer control (don't have a use for it now)
-      # addLayersControl(overlayGroups = "Smoke", #baseGroups = c("Base Map",
-      #   #"Blue Sky Extent", "Fire Locations", "Legend"),
-      #   options = layersControlOptions(collapsed = F))
-    
-      # add county shapefile (all counties slow down app a lot)
-      #addPolygons(data = us_county, weight = 1, smoothFactor = 5)
 
   })# end base leaflet
   
-  # add interactive raster layer
+  # add interactive polygon layers -----
   observeEvent(input$date_smoke,{
   # set index as 1 or 2 for easier index
   layer_name <- as.character(input$date_smoke)
@@ -159,6 +172,15 @@ server <- (function(input, output){
     round(exp(vals()/10*0.0733),2)) %>% 
     lapply(htmltools::HTML)
   
+  # HIA labels
+  hia_vals <- reactive({getElement(county_hia@data, layer_name)})
+  # hia labels and popwt
+  hia_label <- sprintf(paste0(
+    "<strong> Estimated Respiratory Emergency Department Visits: %g"), 
+    # number for smoke concentration
+    hia_vals()) %>% 
+    lapply(htmltools::HTML)
+  
   # call proxy map
   leafletProxy(mapId="map") %>%
     clearShapes() %>% 
@@ -166,15 +188,30 @@ server <- (function(input, output){
     addRectangles(lng1=-130.0,lng2= -59.95, lat1=22.5, lat2=52.5,
                   fillColor = "transparent", color = "black", weight = 2) %>%
     # add smoke polygon 
-      addPolygons(data = smk_forecast, color = "tranparent", 
-        fillColor = ~pal(vals()), weight = 1, smoothFactor = 1, fillOpacity = 0.5, 
+      addPolygons(data = smk_forecast, group = "Smoke", color = "transparent", 
+        fillColor = ~pal(vals()), weight=1, smoothFactor=1, fillOpacity=0.5, 
         # add highlight option
         highlight = highlightOptions(weight = 5, color = "blue", 
           bringToFront = T, fillOpacity = 0.85),
         # add smoke pm values
         label = pm_label,
         labelOptions = labelOptions(style = list("font-weight" = "normal", 
-          padding = "3px 8px"), textsize = "12px", direction = "auto") 
+          padding = "3px 8px"), textsize = "12px", direction = "auto")) %>% 
+    # add HIA polygon
+      addPolygons(data = county_hia, group = "HIA", color = "transparent",
+        fillColor = ~hia_pal(hia_vals()), weight=1, smoothFactor=1, fillOpacity=0.5,
+        # add highlight option
+        highlight = highlightOptions(weight = 5, color = "red", 
+                                     bringToFront = T, fillOpacity = 0.85),
+        # add hia resp est values
+        label = hia_label,
+        labelOptions = labelOptions(style = list("font-weight" = "normal", 
+           padding = "3px 8px"), textsize = "12px", direction = "auto"))  %>% 
+    # add layer control
+      addLayersControl(
+        baseGroups = c("Smoke"),
+        overlayGroups = c("Smoke", "HIA"),
+        options = layersControlOptions(collapsed = F)
       )
   }) # end reactive layer
   
