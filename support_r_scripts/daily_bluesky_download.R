@@ -10,7 +10,7 @@
 # html#downloadbsoutput\
 
 # libraries needed
-library(ncdf4)
+library(ncdf4) # netcdf files
 library(stringr)
 library(raster) # easier to manipulate than netcdf file
 library(rgdal)
@@ -21,7 +21,7 @@ setwd("/srv/www/rgan/smoke_forecaster")
 home_path <- paste0("/srv/www/rgan/smoke_forecaster")
 
 # working directory from laptop
-#home_path <- paste0(".")
+# home_path <- paste0(".")
 # download bluesky daily output -----------------------------------------------
 
 # date is needed for download; taking out "-" separator; adding 00 to get first
@@ -57,7 +57,7 @@ bs2v2 <- function(fileName) {
   # open nc file
   old_nc <- nc_open(fileName)
   
-  # ----- Create latitude and longitude axes -----------------------------------
+# Create latitude and longitude axes ----
 
   # Current (index) values
   row <- old_nc$dim$ROW$vals
@@ -86,7 +86,7 @@ bs2v2 <- function(fileName) {
   lat <- seq(s, n, length.out=length(row))
   lon <- seq(w, e, length.out=length(col))
   
-  # ----- Create time axis -----------------------------------------------------
+  # Create time axis ----
   
   # Temporal information is stored in the 'TFLAG' variable
   tflag <- ncvar_get(old_nc, "TFLAG")
@@ -100,7 +100,7 @@ bs2v2 <- function(fileName) {
   # We use 'strptime()' to convert our character index to a "POSIXct" value.
   time <- strptime(x=time_str, format="%Y%j%H%M%S", tz="GMT")
   
-  # ----- Create new ncdf4 object ----------------------------------------------
+  # Create new ncdf4 object ----
   
   # Get PM25 values
   # NOTE:  The degenerate 'LAY' dimension disppears so that 'pm25' is now 3D, not 4D. 
@@ -143,9 +143,8 @@ nc_path <- paste0(home_path, "/data/smoke_dispersion_v2.nc")
 # brick or stack 
 smk_brick <- brick(nc_path)
 
-#test_grid <-SpatialPixels(SpatialPoints(smk_brick))
+# Calculate daily average smoke concentration ----------------------------------
 
-# calculate same day daily average ----
 # create raster layer of same day mean value
 # note Sept 13: changing to handle carry over smoke
 same_day_smk <- smk_brick[[1:31]]
@@ -157,7 +156,7 @@ same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[15]
 same_day_date <- format(as.POSIXct(same_day_date, origin="1970-1-1", tz="GMT"),
                     format = "%b %d %Y")
 
-# calculate next day daily average -----
+# calculate next day daily average 
 # subset raster brick to the 32th to 56th layer (next day MST)
 next_day_smk <- smk_brick[[32:56]]
 # create raster layer of daily mean value
@@ -195,11 +194,18 @@ smk_poly <- rasterToPolygons(smoke_stack)
 # to make polygon file smaller and easier to project
 smk_poly <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
 
+# Calculate population-weighted county smk pm2.5 values ------------------------
+# Read in proportion-intersect matrix between grid and county shapes
+grid_county_pi <- read_csv("./data/bluesky_county_prop_intersect.csv",
+                           col_types = cols(.default = col_character())) %>% 
+  mutate_all(as.numeric)
+
+# Calculate health impact of given smoke concentration ------------------------- 
 # remove raster files to save space
 rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
-     next_day_mean_smk, smoke_stack)
+   next_day_mean_smk, smoke_stack)
 
-# write smoke polygon ----
+# write smoke polygon ----------------------------------------------------------
 writeOGR(obj = smk_poly, dsn = paste0(home_path,"/data/smk_poly"), 
          layer = "smk_poly", driver = "ESRI Shapefile", overwrite_layer = T)
 
