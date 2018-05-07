@@ -35,8 +35,25 @@ todays_date <- paste0(gsub("-","", Sys.Date()), "00")
 fire_url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
   "GFS-0.15deg/", todays_date, "/combined/data/fire_locations.csv")
 
-download.file(url = fire_url_path, destfile = paste0(home_path,
-  "/data/fire_locations.csv"), mode = "wb")
+# check if file url exists
+if(RCurl::url.exists(fire_url_path == T)){
+  print(paste0("Fire location data exists today: ", todays_date))
+  download.file(url = file_url_path, 
+    destfile = paste0(home_path, "/data/fire_locations.csv"), mode = "wb")
+  } else { # if no url, print warning message and download yesterday's data
+    # print warning message
+    print(paste0("No fire location data today: ", todays_date, 
+                 "; pulling yesterday's fire locations."))
+    # pull yesterday's date
+    yesterdays_date <- paste0(str_sub(todays_date, start = 1, end =6),
+      formatC(as.numeric(str_sub(todays_date, start = 7, end = 8))-1,width = 2, 
+              flag = "0"), "00")
+    # new fire_url_path
+    download.file(url = paste0("https://smoke.airfire.org/bluesky-daily/output/",
+      "standard/GFS-0.15deg/",yesterdays_date,"/combined/data/fire_locations.csv"), 
+      destfile = paste0(home_path, "/data/fire_locations.csv"), mode = "wb")
+  }
+
 
 # download smoke dispersion output ----
 # define URL path for smoke dispersion
@@ -44,8 +61,24 @@ url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
   "GFS-0.15deg/", todays_date, "/combined/data/smoke_dispersion.nc")
 
 # download a netcdf file to work with
-download.file(url = url_path, destfile = paste0(home_path,
-                "/data/smoke_dispersion.nc"), mode = "wb")
+# check if url exists
+if(RCurl::url.exists(url_path == T)){
+  print(paste0("Smoke dispersion data exists today: ", todays_date))
+  download.file(url = url_path, destfile = paste0(home_path,
+    "/data/smoke_dispersion.nc"), mode = "wb")
+} else { # if no url, print warning message and download yesterday's data
+  # print warning message
+  print(paste0("No smoke dispersion data today: ", todays_date, 
+               "; pulling yesterday's data."))
+  # pull yesterday's date
+  yesterdays_date <- paste0(str_sub(todays_date, start = 1, end =6),
+    formatC(as.numeric(str_sub(todays_date, start = 7, end = 8))-1,width = 2, 
+                                    flag = "0"), "00")
+  # new fire_url_path
+  download.file(url = paste0("https://smoke.airfire.org/bluesky-daily/output/",
+    "standard/GFS-0.15deg/",yesterdays_date,"/combined/data/smoke_dispersion.nc"), 
+    destfile = paste0(home_path, "/data/smoke_dispersion.nc"), mode = "wb")
+}
 
 fileName <- paste0(home_path,"/data/smoke_dispersion.nc")
 
