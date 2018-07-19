@@ -1,7 +1,7 @@
 # smoke_forecaster
 Shiny app of maps for forecasts of smoke and health impacts. 
 
-# THIS IS A PROTOTYPE. USE AT YOUR OWN RISK.
+# THIS IS AN EARLY PROTOTYPE. USE AT YOUR OWN RISK.
 
 We welcome all feedback. 
 
