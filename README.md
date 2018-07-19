@@ -1,20 +1,23 @@
 # smoke_forecaster
-Shiny app of maps for forecasts of smoke and health impacts 
+Shiny app of maps for forecasts of smoke and health impacts. 
 
-=======
-### Notes for Steve:
+# THIS IS A PROTOTYPE. USE AT YOUR OWN RISK.
 
-This app uses BlueSky output from the continental US. I use the extent that includes the entire continental US. This app builds on those BlueSky estimates with a health impact componenet on it using what we know about the relationship between air pollution particulate matter and health endpoints, in this case respiratory emergency room visits.
+We welcome all feedback. 
 
-Every day around 12 PM MST, a cron job initiates the daily bluesky_download R script. Sometimes, BlueSky is not done running it's daily estimates, so I built in a simple if else that if the task fails to find new data, it will download yesterday's data. This should probably be replaced with a while loop to check periodically. I also average the same day daily estimates and tomorrow's forecasted estimate. I believe I start at midnight EST.
+### Overview of app functionality:
 
-A couple big things are done once the daily bluesky netcdf is downloaded. The first is that it's population weighting to the county level. This uses the proportion intersect between the bluesky grid shapefile and county shapefile. I use CENSUS county shapefiles, and I made a shapefile from the netcdf bluesky output. Population density is the estimates from 2015, which are regridded to match the bluesky grid; these data come from SEDAC.
+This app uses BlueSky output from the continental US. This app builds on PM2.5 concentration estimates made by BlueSky and estimates health impact using what established relationships between air pollution particulate matter and health endpoints, in this case respiratory emergency room visits.
 
-Once the population-weighting is done, I use the simple health impact formula using our beta estimates from the Gan 2017 GeoHealth study. Major pieces of the health impact component are the baseline incident estimates of emergency room visits for respiratory disease. I get these estimates from the CDC. The beta estimates come from our paper. Although I think you could use general air pollution study estimates. The final piece is the estimtated population of the county, which aligns spatially with the population weighted smoke estimates. The other part is the estimated difference of smoke PM2.5 which comes from the county population-weighted estimates above.
+Every day around 12 PM MST, a cron job initiates the daily bluesky_download R script. Sometimes, BlueSky is not done running it's daily estimates,  a simple if else that if the task fails to find new data, it will download yesterday's data (this may be replaced with a while loop to check for new data periodically, this app is still underdevelopment). We also average the same day daily estimates and tomorrow's forecasted estimate, starting at midnight EST (needs to be checked).
 
-I think this approach gives a general idea of an estimate of PM2.5 concentration most likely to impact where most people live in a county. It also provides probably an overestimate of the expected number of emergency room visits due to that concentration of smoke. This doesn't account for behavior modification where people may avoid going outside or what not. Accounting for the confidence intervals around the beta concentration estimates should provide more reasonable estimates.
+A couple big things are done once the daily bluesky netcdf is downloaded. The first is population weighting at the county level. This uses the proportion intersect between the bluesky grid shapefile and county shapefile. CENSUS county shapefiles are used for population, and a shapefile from the netcdf bluesky output. Population density is the estimates from 2015, which are regridded to match the bluesky grid; these data come from SEDAC.
 
-Steve, in order to plot the grid and counties on the leaflet map, I only fill and retain values in the shapefile that are above a certain threshold (i.e. excess ED visits > 0 for county shapes, and I think estimated smoke values >5).
+Once the population-weighting is done, a simple health impact formula using  beta estimates from the Gan et al. 2017 GeoHealth study. Major pieces of the health impact component are the baseline incident estimates of emergency room visits for respiratory disease. These estimates are from the US CDC. The beta estimates come from Gan et al. 2017. It may be possible to use general air pollution study estimates. The final piece is the estimtated population of the county, which aligns spatially with the population weighted smoke estimates. The other part is the estimated difference of smoke PM2.5 which comes from the county population-weighted estimates above.
+
+This approach gives a general idea of an estimate of PM2.5 concentration most likely to impact where most people live in a given county. It also likely provides an overestimate of the expected number of emergency room visits due to that concentration of smoke because these methods do not account for behavior modification where people may avoid smoke exposure (e.g. staying inside, HEPA filters, etc.). Accounting for the confidence intervals around the beta concentration estimates should provide more reasonable estimates.
+
+In order to plot the grid and counties on the leaflet map, only values in the shapefile that are above a certain threshold (i.e. excess ED visits > 0 for county shapes, and estimated smoke values >5) are retained.
 
 ### Files you need to make this program run and what they do:
 1. bluesky_grid: Shapefile used to calculate the proportion intersect between bluesky grid and county shapefile. This file is also used to join smoke PM2.5, which I then limit to values > 5. I save this a new shapefile folder called smk_poly, and this is plotted in the leaflet map.
