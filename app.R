@@ -15,27 +15,21 @@ library(shiny)
 library(leaflet)
 library(rgdal) # read shapefile
 
-# setting working directory to salix server
-#wd_dir <- paste0("/srv/www/rgan/smoke_forecaster/")
-#setwd(wd_dir)
-
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
 poly_path <- "./data/smk_poly"
 poly_layer <- "smk_poly"
 
 # read bluesky forecast polygon
+# TODO: Make sure the file exists first. If it does not, generate user friendly
+# TODO: error message. 
 smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
-
-# set upper bound to 250; think about this
-smk_forecast[smk_forecast$layer_1 >= 250, ] <- 249
-smk_forecast[smk_forecast$layer_2 >= 250, ] <- 249
 
 # read in hia estimate ----
 hia_path <- "./data/hia_poly"
 hia_layer <- "hia_poly"
-# hia polygon
 
+# hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
@@ -56,18 +50,22 @@ pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
 
 # add another legend for relative risk resp
 resp_bin <- round(exp((bin/10)*0.0507),2)
+
 # resp pal
 resp_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(resp_bin)), 
                      bins = resp_bin, na.color = "transparent")
 # asthma
 asthma_bin <- round(exp((bin/10)*0.0733),2)
+
 # asthma pal 
+# TODO: Make different from 'resp pal'
 asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
                      bins = asthma_bin, na.color = "transparent")
 
 # define color bin for hia estimates
 # i do not think these values will exceed 300... but it could happen
 hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
+
 # hia pallet
 hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), domain = c(1, max(hia_bin)),
                     bins = hia_bin, na.color="transparent")
@@ -86,30 +84,27 @@ names(date_list) <- date_labels
 fire_locations <- read.csv("./data/fire_locations.csv")
 # type indicates either wildfire (WF) or prescription burn (RX)
 # set color of WF to red and RX to green
+# TODO: Make sure this is communicated. I do not think green for RX makes sense
+# TODO: for this app. We are trying to communicate health impacts of smoke. Green
+# TODO: makes it seem like the smoke from these fires is healthy, go, or O.K.
 pal_fire <- colorFactor(
   palette = c("red", "green"),
   levels = c("WF", "RX")
   )
 
-# read county polygon (commenting out now; slows down app)
-# us_poly_path <- "./data/us_county"
-# us_poly_layer <- "us_county"
-# 
-# # read us polygon
-# us_county <- readOGR(dsn = us_poly_path, layer = us_poly_layer)
 
 # shiny dash board ui ----
 # note: 7/14/2017: I like the dashboard layout, but it may be better to define
 # the three elemnts of the dashboard outside the ui.
 # header
-head <- dashboardHeader(title = "Smoke ForecasteR (beta)",
+head <- dashboardHeader(title = "Smoke HIA Forecaster (beta)",
   titleWidth = 300)
 
 # side bar
 side <- dashboardSidebar(
-    # reactive sidebar
-    radioButtons("date_smoke", label = h2("Date to Forecast"), 
-               choices = date_list, selected = "layer_1")
+  # reactive sidebar
+  selectInput(inputId="date_smoke", label = h3("Date to Forecast"), 
+              choices = date_list, selected = "layer_1")
 ) # end side bar
 
 # body
@@ -117,11 +112,12 @@ body <- dashboardBody(
   # set tag style
   tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
   leafletOutput("map")
+
 )# end dashboard body
 
 
 # ui function with dashboard header, side, and body
-ui <- dashboardPage(head,side,body, skin = "black") 
+ui <- dashboardPage(head, side, body, skin = "black") 
 
 # server section ---- 
 # consider adding a session function if I want to know statistics
