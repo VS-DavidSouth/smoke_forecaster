@@ -102,6 +102,7 @@ pal_fire <- colorFactor(
 # the three elemnts of the dashboard outside the ui.
 # header
 head <- dashboardHeader(
+  tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:sjbrey@rams.colostate.edu", "Contact us")),
   tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/issues", "Report Bug")),
   title = "Smoke HIA Forecaster (beta)",
