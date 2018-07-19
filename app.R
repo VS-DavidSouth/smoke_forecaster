@@ -5,6 +5,15 @@
 # R Version 3.4.0 
 # ------------------------------------------------------------------------------
 
+polyOpacity <- 0.7
+polyBorderOpacity <- 0.85
+
+fireIcons <- icons(
+  iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
+  iconWidth = 17, 
+  iconHeight = 17
+)
+
 # note this script contains both ui and server function. I modified to make this 
 # version lighter as the server can't handle the raster brick. That code still
 # exists in the ui and server code.
@@ -39,25 +48,20 @@ county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
 
-# default leaflet projection
-# commented out for now
-#grs80 <- paste0("+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs")
-
-#test <- spTransform(smk_forecast, CRS(grs80))  
-#test
-
 # define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
-bin <- c(0, 10, 20, 30, 40, 50, 100, 250)
-pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(0,250), bins = bin,
-                na.color = "transparent")
+bin <- c(0, 10, 20, 30, 40, 50, 100, 250, 1000)
+pal <- colorBin(c("gray", "darkred"), domain = c(0,1000), bins = bin,
+                na.color = "transparent") # "#F0F2F0", "#000c40"
 
+################################################################################
+# Ryan, what is going on here in this section. Where do these numbers come from?
 # add another legend for relative risk resp
 resp_bin <- round(exp((bin/10)*0.0507),2)
 
 # resp pal
 resp_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(resp_bin)), 
-                     bins = resp_bin, na.color = "transparent")
+                     bins = resp_bin, na.color = "red") # "transparent" to hide, if desired
 # asthma
 asthma_bin <- round(exp((bin/10)*0.0733),2)
 
@@ -65,9 +69,11 @@ asthma_bin <- round(exp((bin/10)*0.0733),2)
 # TODO: Make different from 'resp pal'
 asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
                        bins = asthma_bin, na.color = "transparent")
+################################################################################
 
 # define color bin for hia estimates
-# i do not think these values will exceed 300... but it could happen
+# Ryan comment: I do not think these values will exceed 300... but it could happen
+# TODO: Make a log of when this does happen. 
 hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
 
 # hia pallet
@@ -132,42 +138,55 @@ ui <- dashboardPage(head, side, body, skin = "black")
 # consider adding a session function if I want to know statistics
 server <- (function(input, output){
   # add base leaflet map
+  # TODO: Set users LOCATION as the default center of view
+  # TODO: https://github.com/AugustT/shiny_geolocation
   output$map <- renderLeaflet({
+    
     leaflet() %>% 
+      
       # call map layer
       addTiles() %>% 
+      
       # set bounds of map
-      fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
+      fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975)# %>% 
       
       # add fire locaiton icons
       # TODO: Fire locations do not change with date selection. This is confusing.
-      addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
-                       lng = fire_locations$longitude, color = ~pal_fire(type),
-                       radius = ~sqrt(area/100), fill=F, weight = 0.5) %>% 
+      # TODO: Make fire locations a dynamic layer same as HIA and such. 
+      # addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
+      #                  lng = fire_locations$longitude, color = ~pal_fire(type),
+      #                  radius = ~sqrt(area/100), fill=F, weight = 0.5) #%>% 
       
-      # add legend for smoke values
-      addLegend(pal=pal, values=c(0, 250), 
-                title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-                position = "bottomleft") %>% 
-      
-      # add respiratory legend
-      addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
-                title = htmltools::HTML("Asthma <br> Relative Risk"),
-                position = "bottomright") %>% 
-      
-      # add respiratory legend
-      addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
-                title = htmltools::HTML("Respiratory <br> Relative Risk"),
-                position = "bottomright") 
+      # TODO: Until these legends are more clearly explained, or have links to
+      # TODO: informative documentation and are different colors, they are going
+      # TODO: to be hidden. 
+      # # add legend for smoke values
+      # addLegend(pal=pal, values=c(0, 250), 
+      #           title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
+      #           position = "bottomleft") %>% 
+      # 
+      # # add respiratory legend
+      # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
+      #           title = htmltools::HTML("Asthma <br> Relative Risk"),
+      #           position = "bottomright") %>% 
+      # 
+      # # add respiratory legend
+      # addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
+      #           title = htmltools::HTML("Respiratory <br> Relative Risk"),
+      #           position = "bottomright") 
     
   })# end base leaflet
   
   # add interactive polygon layers -----
   observeEvent(input$date_smoke,{
+    
     # set index as 1 or 2 for easier index
     layer_name <- as.character(input$date_smoke)
+    
     # define reactive label values of smoke concentrations and relative risks
+    # TODO: Give vals a more descriptive name 
     vals <- reactive({getElement(smk_forecast@data, layer_name)})
+    
     # Smoke Concentration: value ug/m^3 \return
     # Relative Increase in Risk: value %
     pm_label <- sprintf(paste0(
@@ -201,30 +220,46 @@ server <- (function(input, output){
       
       # add smoke polygons 
       addPolygons(data = smk_forecast, group = "Smoke", color = "transparent", 
-                  fillColor = ~pal(vals()), weight=1, smoothFactor=1, fillOpacity=0.5, 
+                  fillColor = ~pal(vals()), weight=1, smoothFactor=1, fillOpacity=polyOpacity, 
                   # add highlight option
                   highlight = highlightOptions(weight = 5, color = "blue", 
-                                               bringToFront = T, fillOpacity = 0.85),
+                                               bringToFront = T, fillOpacity = polyBorderOpacity),
                   # add smoke pm values
                   label = pm_label,
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
-                                                           padding = "3px 8px"), textsize = "12px", direction = "auto")) %>% 
+                                                           padding = "3px 8px"), 
+                                              textsize = "12px", direction = "auto")) %>% 
       
       # add HIA polygon
       addPolygons(data = county_hia, group = "HIA", color = "transparent",
-                  fillColor = ~hia_pal(hia_vals()), weight=1, smoothFactor=1, fillOpacity=0.5,
+                  fillColor = ~hia_pal(hia_vals()), weight=1, smoothFactor=1, fillOpacity=polyOpacity,
                   # add highlight option
                   highlight = highlightOptions(weight = 5, color = "red", 
-                                               bringToFront = T, fillOpacity = 0.85),
+                                               bringToFront = T, fillOpacity = polyBorderOpacity),
                   # add hia resp est values
                   label = hia_label,
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
-                                                           padding = "3px 8px"), textsize = "12px", direction = "auto"))  %>% 
+                                                           padding = "3px 8px"), 
+                                              textsize = "12px", direction = "auto"))  %>% 
+      
+      # add fire locations 
+      addMarkers(
+        lng=fire_locations$longitude,
+        lat=fire_locations$latitude,
+        # clusterOptions = markerClusterOptions(
+        #   spiderLegPolylineOptions = list(weight = 0, color = "#222", opacity =0.5)
+        #   ),
+        icon = fireIcons,
+        label= paste(fire_locations$type),
+        popup=paste("<b>", "Area:","</b>", fire_locations$area,"<br>",
+                    "<b>", "Type:", "</b>", fire_locations$type,"<br>"),
+        group="Fires"
+      ) %>%
       
       # add layer control
       addLayersControl(
         baseGroups = c("Smoke"),
-        overlayGroups = c("Smoke", "HIA"),
+        overlayGroups = c("Smoke", "HIA", "Fires"),
         options = layersControlOptions(collapsed = F)
       )
     
