@@ -101,22 +101,26 @@ pal_fire <- colorFactor(
 # note: 7/14/2017: I like the dashboard layout, but it may be better to define
 # the three elemnts of the dashboard outside the ui.
 # header
-head <- dashboardHeader(title = "Smoke HIA Forecaster (beta)",
-                        titleWidth = 300)
+head <- dashboardHeader(
+  tags$li(class = "dropdown", tags$a(href = "mailto:sjbrey@rams.colostate.edu", "Contact us")),
+  tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/issues", "Report Bug")),
+  title = "Smoke HIA Forecaster (beta)",
+  titleWidth = 300
+  )
 
 # side bar
 side <- dashboardSidebar(
   # reactive sidebar
-  selectInput(inputId="date_smoke", label = h3("Date to Forecast"), 
+  selectInput(inputId="date_smoke", label = h3("Date to Forecast"),
               choices = date_list, selected = "layer_1")
 ) # end side bar
+
 
 # body
 body <- dashboardBody(
   # set tag style
   tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
   leafletOutput("map")
-  
 )# end dashboard body
 
 
