@@ -5,14 +5,7 @@
 # R Version 3.4.0 
 # ------------------------------------------------------------------------------
 
-polyOpacity <- 0.7
-polyBorderOpacity <- 0.85
 
-fireIcons <- icons(
-  iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
-  iconWidth = 17, 
-  iconHeight = 17
-)
 
 # note this script contains both ui and server function. I modified to make this 
 # version lighter as the server can't handle the raster brick. That code still
@@ -24,6 +17,19 @@ library(shiny)
 library(leaflet)
 library(rgdal) # for read shapefile
 
+polyOpacity <- 0.7
+polyBorderOpacity <- 1
+
+fireIcons <- icons(
+  iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
+  iconWidth = 17, 
+  iconHeight = 17
+)
+
+pal_fire <- colorFactor(
+  palette = c("red", "green"),
+  levels = c("WF", "RX")
+)
 
 # Set paths and load required data ---------------------------------------------
 
@@ -51,7 +57,7 @@ county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 # define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
 bin <- c(0, 10, 20, 30, 40, 50, 100, 250, 1000)
-pal <- colorBin(c("gray", "darkred"), domain = c(0,1000), bins = bin,
+pal <- colorBin(c("gray", "red"), domain = c(0,1000), bins = bin,
                 na.color = "transparent") # "#F0F2F0", "#000c40"
 
 ################################################################################
@@ -85,6 +91,8 @@ hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), domain = c(1, max(hia_bin)),
 
 # read in saved R dates ----
 load("./data/date_label.RData")
+date_labels[1] <- paste(date_labels[1], "today")
+date_labels[2] <- paste(date_labels[2], "tomorrow")
 
 # create date names list to use with the radio button
 date_list <- list("layer_1", "layer_2")
@@ -92,21 +100,8 @@ names(date_list) <- date_labels
 
 # read in fire locations ----
 fire_locations <- read.csv("./data/fire_locations.csv")
-# type indicates either wildfire (WF) or prescription burn (RX)
-# set color of WF to red and RX to green
-# TODO: Make sure this is communicated. I do not think green for RX makes sense
-# TODO: for this app. We are trying to communicate health impacts of smoke. Green
-# TODO: makes it seem like the smoke from these fires is healthy, go, or O.K.
-pal_fire <- colorFactor(
-  palette = c("red", "green"),
-  levels = c("WF", "RX")
-)
-
 
 # shiny dash board ui ----
-# note: 7/14/2017: I like the dashboard layout, but it may be better to define
-# the three elemnts of the dashboard outside the ui.
-# header
 head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:sjbrey@rams.colostate.edu", "Contact us")),
@@ -148,32 +143,41 @@ server <- (function(input, output){
       addTiles() %>% 
       
       # set bounds of map
-      fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975)# %>% 
+      fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
       
-      # add fire locaiton icons
-      # TODO: Fire locations do not change with date selection. This is confusing.
-      # TODO: Make fire locations a dynamic layer same as HIA and such. 
-      # addCircleMarkers(data = fire_locations, lat = fire_locations$latitude, 
-      #                  lng = fire_locations$longitude, color = ~pal_fire(type),
-      #                  radius = ~sqrt(area/100), fill=F, weight = 0.5) #%>% 
+      # This buttom allows the user to find thier location. 
+      # TODO: Fix, it does not appear to always work. Security issue? 
+      addEasyButton(
+        easyButton(
+          position = "topleft",
+          icon = "fa-crosshairs",
+          title = "My location",
+          onClick = JS(
+            c(
+              "function(btn,  map){map.locate({setView:true,enableHighAccuracy:true})}"
+            )
+          )
+        )
+      )%>%
       
       # TODO: Until these legends are more clearly explained, or have links to
       # TODO: informative documentation and are different colors, they are going
       # TODO: to be hidden. 
-      # # add legend for smoke values
-      # addLegend(pal=pal, values=c(0, 250), 
-      #           title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-      #           position = "bottomleft") %>% 
+      # add legend for smoke values
+      addLegend(pal=pal, values=c(0, 1000),
+                title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
+                position = "bottomleft")#, group="Legends")
       # 
       # # add respiratory legend
       # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
       #           title = htmltools::HTML("Asthma <br> Relative Risk"),
       #           position = "bottomright") %>% 
       # 
-      # # add respiratory legend
+      # add respiratory legend
       # addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
       #           title = htmltools::HTML("Respiratory <br> Relative Risk"),
-      #           position = "bottomright") 
+      #           position = "bottomright",
+      #           group="Legends")
     
   })# end base leaflet
   
@@ -203,13 +207,27 @@ server <- (function(input, output){
     
     # HIA labels
     hia_vals <- reactive({getElement(county_hia@data, layer_name)})
+    hia_county_name <- reactive({getElement(county_hia@data, "NAME")}, quoted=T)
+    hia_county_pop <- reactive({getElement(county_hia@data, "Pop")})
     
-    # hia labels and popwt
-    hia_label <- sprintf(
-      paste0("<strong> Estimated Respiratory Emergency Department Visits: %g"), 
-      # number for smoke concentration
-      hia_vals()) %>% 
+    hia_label <- sprintf(paste0(
+      "<strong>Estimated Respiratory Emergency Department Visits: %g </strong>",
+      #"<br> County Name: %g",
+      "<br> County Population: %g"), 
+      # number for smoke ED visits
+      hia_vals(),
+      # # County Name
+      # hia_county_name(),
+      # number for relative risk asthma
+      hia_county_pop())%>% 
       lapply(htmltools::HTML)
+    
+    # # hia labels and popwt
+    # hia_label <- sprintf(paste0("
+    #   <strong> Estimated Respiratory Emergency Department Visits: %g"), 
+    #   "<br> "
+    #   hia_vals()) %>% 
+    #   lapply(htmltools::HTML)
     
     # call proxy map
     leafletProxy(mapId="map") %>%
@@ -231,37 +249,58 @@ server <- (function(input, output){
                                               textsize = "12px", direction = "auto")) %>% 
       
       # add HIA polygon
-      addPolygons(data = county_hia, group = "HIA", color = "transparent",
+      # TODO: Make these labels nice and more informative following example of link below. 
+      # http://rpubs.com/bhaskarvk/electoral-Map-2016
+      addPolygons(data = county_hia, 
+                  group = "HIA", 
+                  color = "transparent",
                   fillColor = ~hia_pal(hia_vals()), weight=1, smoothFactor=1, fillOpacity=polyOpacity,
                   # add highlight option
                   highlight = highlightOptions(weight = 5, color = "red", 
                                                bringToFront = T, fillOpacity = polyBorderOpacity),
                   # add hia resp est values
                   label = hia_label,
+                  # label=paste0(county_hia@data$NAME, " county ",
+                  #             "(population ", county_hia@data$Pop,"), ", 
+                  #             "Emergency Department vists: ", hia_vals()),
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
                                                            padding = "3px 8px"), 
                                               textsize = "12px", direction = "auto"))  %>% 
       
-      # add fire locations 
-      addMarkers(
-        lng=fire_locations$longitude,
-        lat=fire_locations$latitude,
-        # clusterOptions = markerClusterOptions(
-        #   spiderLegPolylineOptions = list(weight = 0, color = "#222", opacity =0.5)
-        #   ),
-        icon = fireIcons,
-        label= paste(fire_locations$type),
-        popup=paste("<b>", "Area:","</b>", fire_locations$area,"<br>",
-                    "<b>", "Type:", "</b>", fire_locations$type,"<br>"),
-        group="Fires"
-      ) %>%
+      # # add fire locations
+      # addMarkers(
+      #   lng=fire_locations$longitude,
+      #   lat=fire_locations$latitude,
+      #   # clusterOptions = markerClusterOptions(
+      #   #   spiderLegPolylineOptions = list(weight = 0, color = "#222", opacity =0.5)
+      #   #   ),
+      #   icon = fireIcons,
+      #   label= paste(fire_locations$type),
+      #   popup=paste("<b>", "Area:","</b>", round(fire_locations$area),"<br>",
+      #               "<b>", "Type:", "</b>", fire_locations$type,"<br>"),
+      #   group="Fires"
+      # ) %>%
+      
+      addCircleMarkers(data = fire_locations, 
+                       lat = fire_locations$latitude,
+                       lng = fire_locations$longitude, 
+                       color = ~pal_fire(type),
+                       radius = ~sqrt(area/100), 
+                       fill=F, 
+                       weight = 0.5,
+                       group="Fires") %>% 
       
       # add layer control
       addLayersControl(
         baseGroups = c("Smoke"),
-        overlayGroups = c("Smoke", "HIA", "Fires"),
+        overlayGroups = c("Smoke", "HIA", "Fires", "Legends"),
         options = layersControlOptions(collapsed = F)
-      )
+      ) %>%
+      
+      # Set defualt hidden groups 
+      hideGroup("Fires")%>%
+      hideGroup("Legends")
+    
     
   }) # end reactive layer
   
