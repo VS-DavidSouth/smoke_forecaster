@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------
 # Title: Daily BlueSky forecast download and data management
-# Author: Ryan Gan
-# Date Created: 6/19/2017
+# Authors: Ryan Gan & Steven Brey 
+# Date Created: 6/19/2017. Heavy modification began 7/20/2018. See github.
 # Created under R Version: 3.3.3
 # ------------------------------------------------------------------------------
 
@@ -12,8 +12,7 @@
 # are known by 
 
 # Note: Code directly from mazamascience to download their USFS BlueSky runs
-# http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.
-# html#downloadbsoutput\
+# http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.html#downloadbsoutput\
 
 # libraries needed
 library(ncdf4) # netcdf files
@@ -48,26 +47,26 @@ url_base <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/", m
 todays_dir <- paste0(url_base, todays_date)
 
 # Check to see if todays date 12Z forecast exists. 
-if ( url.exists( paste0(todays_dir,"12") ) ){
+if ( url.exists( paste0(todays_dir,"12/combined") ) ){
   
-  print("12Z forecast being used")
-  forecast_url <- paste0(todays_dir,"12")
+  print("12Z forecast latest available, being used")
+  forecast_url <- paste0(todays_dir,"12/combined")
   
-} else if( url.exists( paste0(todays_dir,"00") ) ){
+} else if( url.exists( paste0(todays_dir,"00/combined") ) ){
   
-  print("00Z forecast being used")
-  forecast_url <- paste0(todays_dir,"00")
+  print("00Z forecast latest available, being used")
+  forecast_url <- paste0(todays_dir,"00/combined")
   
 } else {
   
-  # No grids fore todays data available yet. Try yesterday.
+  # No grids for todays data available yet. Try yesterday.
   yesterday <- Sys.Date()-1
-  forecast_url <- paste0(url_base, gsub("-","", yesterday), "12")
+  forecast_url <- paste0(url_base, gsub("-","", yesterday), "12/combined")
   
 }
 
 # Create path to online data directory for last available model run
-online_data_path <- paste0(forecast_url, "/combined/data/")
+online_data_path <- paste0(forecast_url, "/data/")
 
 # Create a file connection that will log what this script tries to do and when
 # it tries to do it. 
@@ -104,7 +103,11 @@ line5 <- paste("Time complete:",Sys.time())
 writeLines(c(line1, line2, line3, line4, line5), con=download_log)
 close(download_log) 
 
-# netcdf file manipulaton ------------------------------------------------------
+################################################################################
+# saved smoke netcdf file manipulaton 
+################################################################################
+# TODO: Create a new log that documents the processing of these nc data. 
+
 fileName <- paste0(home_path,"data/smoke_dispersion.nc")
 
 # This function loads the most recently downloaded smoke dispersion .nc file
