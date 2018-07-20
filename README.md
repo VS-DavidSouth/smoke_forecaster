@@ -9,6 +9,8 @@ We welcome all feedback.
 
 This app uses BlueSky output from the continental US. This app builds on PM2.5 concentration estimates made by BlueSky and estimates health impact using what established relationships between air pollution particulate matter and health endpoints, in this case respiratory emergency room visits.
 
+BlueSky smoke forecast can be viewed here: https://tools.airfire.org/websky/v1/#status
+
 Every day around 12 PM MST, a cron job initiates the daily bluesky_download R script. Sometimes, BlueSky is not done running it's daily estimates,  a simple if else that if the task fails to find new data, it will download yesterday's data (this may be replaced with a while loop to check for new data periodically, this app is still underdevelopment). We also average the same day daily estimates and tomorrow's forecasted estimate, starting at midnight EST (needs to be checked).
 
 A couple big things are done once the daily bluesky netcdf is downloaded. The first is population weighting at the county level. This uses the proportion intersect between the bluesky grid shapefile and county shapefile. CENSUS county shapefiles are used for population, and a shapefile from the netcdf bluesky output. Population density is the estimates from 2015, which are regridded to match the bluesky grid; these data come from SEDAC.
