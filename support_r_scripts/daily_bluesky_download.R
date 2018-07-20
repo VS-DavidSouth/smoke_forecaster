@@ -65,20 +65,42 @@ if ( url.exists( paste0(todays_dir,"12") ) ){
   
 }
 
-# Create path to dataDir
+# Create path to online data directory for last available model run
 online_data_path <- paste0(forecast_url, "/combined/data/")
 
-# Get fire locations ----
+# Create a file connection that will log what this script tries to do and when
+# it tries to do it. 
+download_log <- file("download_log.txt")
+line1 <- paste("Download log for:", Sys.time())
+
+# file specific urls
 fire_locations_url <- paste0(online_data_path, "fire_locations.csv")
-download.file(url = fire_locations_url, 
-              destfile = paste0(home_path, "data/fire_locations.csv"), 
-              mode = "wb")
+smoke_dispersion_url <- paste0(online_data_path, "smoke_dispersion.nc")
+
+line2 <- paste("fire locations file: ", fire_locations_url)
+line3 <- paste("smoke dispersion file: ", smoke_dispersion_url)
+
+# Get fire locations ----
+try_locations <- try(download.file(url = fire_locations_url,
+                                   destfile = paste0(home_path, "data/fire_locations.csv"), 
+                                   mode = "wb")
+                     )
 
 # Get smoke dispersion output ----
-smoke_dispersion_url <- paste0(online_data_path, "smoke_dispersion.nc")
-download.file(url = smoke_dispersion_url, 
-              destfile = paste0(home_path, "data/smoke_dispersion.nc"), 
-              mode = "wb")
+try_smoke <- try(download.file(url = smoke_dispersion_url, 
+                               destfile = paste0(home_path, "data/smoke_dispersion.nc"), 
+                               mode = "wb")
+                 )
+
+# Check to see if there was an error in either. 
+if(class(try_locations) == "try-error" | class(try_smoke) == "try-error"){
+  line4 <- paste("THERE WAS A DOWNLOAD ERROR")
+} else{
+  line4 <- paste("Both fire locations and smoke dispersion downloaded.")
+}
+line5 <- paste("Time complete:",Sys.time())
+writeLines(c(line1, line2, line3, line4, line5), con=download_log)
+close(download_log) # Write the logfile
 
 # netcdf file manipulaton ------------------------------------------------------
 fileName <- paste0(home_path,"data/smoke_dispersion.nc")
