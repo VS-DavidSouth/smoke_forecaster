@@ -6,7 +6,6 @@
 # ------------------------------------------------------------------------------
 
 
-
 # note this script contains both ui and server function. I modified to make this 
 # version lighter as the server can't handle the raster brick. That code still
 # exists in the ui and server code.
@@ -158,15 +157,15 @@ server <- (function(input, output){
             )
           )
         )
-      )%>%
+      )
       
       # TODO: Until these legends are more clearly explained, or have links to
       # TODO: informative documentation and are different colors, they are going
       # TODO: to be hidden. 
       # add legend for smoke values
-      addLegend(pal=pal, values=c(0, 1000),
-                title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-                position = "bottomleft")#, group="Legends")
+      # addLegend(pal=pal, values=c(0, 1000),
+      #           title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
+      #           position = "bottomleft")#, group="Legends")
       # 
       # # add respiratory legend
       # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
@@ -222,13 +221,6 @@ server <- (function(input, output){
       hia_county_pop())%>% 
       lapply(htmltools::HTML)
     
-    # # hia labels and popwt
-    # hia_label <- sprintf(paste0("
-    #   <strong> Estimated Respiratory Emergency Department Visits: %g"), 
-    #   "<br> "
-    #   hia_vals()) %>% 
-    #   lapply(htmltools::HTML)
-    
     # call proxy map
     leafletProxy(mapId="map") %>%
       clearShapes() %>% 
@@ -259,27 +251,13 @@ server <- (function(input, output){
                   highlight = highlightOptions(weight = 5, color = "red", 
                                                bringToFront = T, fillOpacity = polyBorderOpacity),
                   # add hia resp est values
-                  label = hia_label,
-                  # label=paste0(county_hia@data$NAME, " county ",
-                  #             "(population ", county_hia@data$Pop,"), ", 
-                  #             "Emergency Department vists: ", hia_vals()),
+                  #label = hia_label,
+                  label=paste0(county_hia@data$NAME, " county ",
+                              "(population ", county_hia@data$Pop,"), ",
+                              "Emergency Department vists: ", hia_vals()),
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
                                                            padding = "3px 8px"), 
                                               textsize = "12px", direction = "auto"))  %>% 
-      
-      # # add fire locations
-      # addMarkers(
-      #   lng=fire_locations$longitude,
-      #   lat=fire_locations$latitude,
-      #   # clusterOptions = markerClusterOptions(
-      #   #   spiderLegPolylineOptions = list(weight = 0, color = "#222", opacity =0.5)
-      #   #   ),
-      #   icon = fireIcons,
-      #   label= paste(fire_locations$type),
-      #   popup=paste("<b>", "Area:","</b>", round(fire_locations$area),"<br>",
-      #               "<b>", "Type:", "</b>", fire_locations$type,"<br>"),
-      #   group="Fires"
-      # ) %>%
       
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
@@ -298,8 +276,8 @@ server <- (function(input, output){
       ) %>%
       
       # Set defualt hidden groups 
-      hideGroup("Fires")%>%
-      hideGroup("Legends")
+      hideGroup("Fires")#%>%
+      #hideGroup("Legends")
     
     
   }) # end reactive layer
