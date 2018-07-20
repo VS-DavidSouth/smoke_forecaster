@@ -204,47 +204,46 @@ timeGMT <- bs2v2(fileName)
 nc_path <- paste0(home_path, "data/smoke_dispersion_v2.nc")
 
 # get nc data as raster as class "RasterBrick"
-smk_brick <- brick(nc_path)
+smoke_brick <- brick(nc_path)
 
-# Calculate daily average smoke concentrations ---------------------------------
+################################################################################
+# Calculate daily average smoke concentrations 
+################################################################################
 
 # Change timezone to Denver, or MDT (in the smoke season)
 time_GMT    <- as.POSIXct(as.character(time), tz="GMT")
-time_denver <- base::format(time_GMT, tz="America/Denver", usetz=TRUE)
+time_denver <- as.POSIXct(base::format(time_GMT, tz="America/Denver", usetz=TRUE))
 
 # Get day and unique days that this forecast covers 
 forecastDay <- lubridate::day(time_denver)
-unique_forecast_dates <- unique(forecastDay)
+unique_forecast_dates <- sort(unique(forecastDay))
 
-# create raster layer of same day mean value
-same_day_smk <- smk_brick[[1:31]] # What the hell is 31?????
+# Figure out the first date we have a full 24 hour forecast for
+todays_day_numeric <- as.numeric(format(Sys.Date(), "%d"))
 
-# create raster layer of mean value
-same_day_mean_smk <- mean(same_day_smk)
+# NOTE:
+# smoke_brick typed to the console will reveal that the diemsnions are:
+# "201, 481, 96681, 192  (nrow, ncol, ncell, nlayers)". Default rasterstack 
+# havaior is to perform math and index over nlayers, in this case that is time. 
+
+# Create raster layer of same day mean value and take the mean of those (hourly)
+# values for the selected date. 
+t_index <- which(todays_day_numeric==forecastDay)
+same_day_mean_smk <- mean(smoke_brick[[t_index]])
 
 # extract the date without timestamp (taking element date 29 from 1:29)
-same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[15]
+same_day_date <- unique( format(time_denver[t_index], format = "%b %d %Y") )
 
-# assign date time stamp in a format of month_day_year to bind with name
-same_day_date <- format(as.POSIXct(same_day_date, origin="1970-1-1", tz="GMT"),
-                    format = "%b %d %Y")
-
-# calculate next day daily average 
-# subset raster brick to the 32th to 56th layer (next day MST)
-next_day_smk <- smk_brick[[32:56]]
-# create raster layer of daily mean value
-next_day_mean_smk <- mean(next_day_smk)
-# extract next day's date
-next_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[44]
-# assign date time stamp in a format of month_day_year to bind with name
-next_day_date <- format(as.POSIXct(next_day_date, origin="1970-1-1", tz="GMT"),
-                        format = "%b %d %Y")
+t_index <- which((todays_day_numeric+1)==forecastDay)
+next_day_smk <- mean(smoke_brick[[t_index]])
+next_day_date <- unique( format(time_denver[t_index], format = "%b %d %Y") )
 
 # creating a vector of the character dates and saving to use in shiny labels
 # note I think it's easier to save as a seperate file than label the layers of 
 # the shape layers; I suspect less bugs with generic names in the shapefile than
 # a changing date
 date_labels <- c(same_day_date, next_day_date)
+
 # saving character string of dates
 save(date_labels, file = paste0(home_path,"/data/date_label.RData"))
 
