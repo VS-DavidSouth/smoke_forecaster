@@ -2,6 +2,10 @@
 .Rhistory
 .RData
 .Ruserdata
+bluesky_download_log.txt
+session.RData
+
+writing/*
 
 # ignore net cdf file types 
 *.nc
