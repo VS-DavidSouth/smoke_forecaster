@@ -5,7 +5,13 @@
 # Created under R Version: 3.3.3
 # ------------------------------------------------------------------------------
 
-# Note: Code directly from mazamascience to download their bluesky runs
+# This is run in a crontab. This is done daily. We need to do this more often
+# and provide information on whether it is pulled. The crontab is on salix.
+
+# only have ED visits for certain things, no cardio vascular, HIA calculations 
+# are known by 
+
+# Note: Code directly from mazamascience to download their USFS BlueSky runs
 # http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.
 # html#downloadbsoutput\
 
@@ -14,77 +20,73 @@ library(ncdf4) # netcdf files
 library(stringr)
 library(raster) # easier to manipulate than netcdf file
 library(rgdal)
+library(RCurl)
+
+# TODO: consider these as possible user arguments 
+model <- "GFS-0.15deg"
 
 # set up working directory
 setwd("/srv/www/rgan/smoke_forecaster")
+
 # define path to repository for the server for writing files
 home_path <- paste0("/srv/www/rgan/smoke_forecaster")
+home_path <- paste0(getwd(), "/")
 
-# working directory from laptop
-# home_path <- paste0(".")
 # download bluesky daily output -----------------------------------------------
 
-# date is needed for download; taking out "-" separator; adding 00 to get first
-# run of the day (just in case there are two)
-todays_date <- paste0(gsub("-","", Sys.Date()), "00")
+# date is needed for download; taking out "-" separator. 00Z and 12Z forecasts
+# will be aquiured, whatever is newest. 
+todays_date <- paste0(gsub("-","", Sys.Date()))
 
 # download fire locations from bluesky runs ----
 # note right now I download only the location file, but I may work in
 # fire information in the future. looks like it's contained in the json file
 # Note: changed "forecast" to "combined" estimate on Sept 5 2017
-fire_url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
-  "GFS-0.15deg/", todays_date, "/combined/data/fire_locations.csv")
 
-# check if file url exists
-if(RCurl::url.exists(fire_url_path == T)){
-  print(paste0("Fire location data exists today: ", todays_date))
-  download.file(url = file_url_path, 
-    destfile = paste0(home_path, "/data/fire_locations.csv"), mode = "wb")
-  } else { # if no url, print warning message and download yesterday's data
-    # print warning message
-    print(paste0("No fire location data today: ", todays_date, 
-                 "; pulling yesterday's fire locations."))
-    # pull yesterday's date
-    yesterdays_date <- paste0(str_sub(todays_date, start = 1, end =6),
-      formatC(as.numeric(str_sub(todays_date, start = 7, end = 8))-1,width = 2, 
-              flag = "0"), "00")
-    # new fire_url_path
-    download.file(url = paste0("https://smoke.airfire.org/bluesky-daily/output/",
-      "standard/GFS-0.15deg/",yesterdays_date,"/combined/data/fire_locations.csv"), 
-      destfile = paste0(home_path, "/data/fire_locations.csv"), mode = "wb")
-  }
+url_base <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/", model,"/")
+todays_dir <- paste0(url_base, todays_date)
 
-
-# download smoke dispersion output ----
-# define URL path for smoke dispersion
-url_path <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/",
-  "GFS-0.15deg/", todays_date, "/combined/data/smoke_dispersion.nc")
-
-# download a netcdf file to work with
-# check if url exists
-if(RCurl::url.exists(url_path == T)){
-  print(paste0("Smoke dispersion data exists today: ", todays_date))
-  download.file(url = url_path, destfile = paste0(home_path,
-    "/data/smoke_dispersion.nc"), mode = "wb")
-} else { # if no url, print warning message and download yesterday's data
-  # print warning message
-  print(paste0("No smoke dispersion data today: ", todays_date, 
-               "; pulling yesterday's data."))
-  # pull yesterday's date
-  yesterdays_date <- paste0(str_sub(todays_date, start = 1, end =6),
-    formatC(as.numeric(str_sub(todays_date, start = 7, end = 8))-1,width = 2, 
-                                    flag = "0"), "00")
-  # new fire_url_path
-  download.file(url = paste0("https://smoke.airfire.org/bluesky-daily/output/",
-    "standard/GFS-0.15deg/",yesterdays_date,"/combined/data/smoke_dispersion.nc"), 
-    destfile = paste0(home_path, "/data/smoke_dispersion.nc"), mode = "wb")
+# Check to see if todays date 12Z forecast exists. 
+if ( url.exists( paste0(todays_dir,"12") ) ){
+  
+  print("12Z forecast being used")
+  forecast_url <- paste0(todays_dir,"12")
+  
+} else if( url.exists( paste0(todays_dir,"00") ) ){
+  
+  print("00Z forecast being used")
+  forecast_url <- paste0(todays_dir,"00")
+  
+} else {
+  
+  # No grids fore todays data available yet. Try yesterday.
+  yesterday <- Sys.Date()-1
+  forecast_url <- paste0(url_base, gsub("-","", yesterday), "12")
+  
 }
 
-fileName <- paste0(home_path,"/data/smoke_dispersion.nc")
+# Create path to dataDir
+online_data_path <- paste0(forecast_url, "/combined/data/")
+
+# Get fire locations ----
+fire_locations_url <- paste0(online_data_path, "fire_locations.csv")
+download.file(url = fire_locations_url, 
+              destfile = paste0(home_path, "data/fire_locations.csv"), 
+              mode = "wb")
+
+# Get smoke dispersion output ----
+smoke_dispersion_url <- paste0(online_data_path, "smoke_dispersion.nc")
+download.file(url = smoke_dispersion_url, 
+              destfile = paste0(home_path, "data/smoke_dispersion.nc"), 
+              mode = "wb")
 
 # netcdf file manipulaton ------------------------------------------------------
-nc <- nc_open(fileName)
+fileName <- paste0(home_path,"data/smoke_dispersion.nc")
 
+# This function loads the most recently downloaded smoke dispersion .nc file
+# and uses the global attributes within that file to create a version of the file
+# with nicer dimension labels. The new nc file is saved with the same name with
+# "v2 appended. 
 bs2v2 <- function(fileName) {
 
   # open nc file
@@ -93,14 +95,13 @@ bs2v2 <- function(fileName) {
 # Create latitude and longitude axes ----
 
   # Current (index) values
-  row <- old_nc$dim$ROW$vals
-  col <- old_nc$dim$COL$vals
+  row <- old_nc$dim$ROW$vals # lat 
+  col <- old_nc$dim$COL$vals # lon
   
   # Useful information is found in the global attributes
   globalAttributes <- ncatt_get(old_nc, varid=0) # varid=0 means 'global'
-  
-  # Use names(globalAttributes) to see the names of the elements contained in this list
-  
+  # NOTE: Use names(globalAttributes) to see the names of the elements contained 
+  # NOTE: in this list
   # NOTE:  globalAttributes is of class 'list'
   # NOTE:  Access list elements with either 'listName[[objectName]]' or 'listName$objectName' notation
   
@@ -109,13 +110,15 @@ bs2v2 <- function(fileName) {
   XCENT <- globalAttributes[["XCENT"]] # x center
   YCENT <- globalAttributes[["YCENT"]] # y center
   
-  # Now we have enough information about the domain to figure out the n, e, s, w corners
+  # Now we have enough information about the domain to figure out 
+  # the n, e, s, w corners
   w <- XORIG
   e <- XORIG + 2 * abs(XCENT - XORIG)
   s <- YORIG
   n <- YORIG + 2 * (YCENT - YORIG)  
   
-  # Knowing the grid dimensions and the true corners we can define legitimate lat/lon dimensions
+  # Knowing the grid dimensions and the true corners we can define legitimate 
+  # lat/lon dimensions
   lat <- seq(s, n, length.out=length(row))
   lon <- seq(w, e, length.out=length(col))
   
@@ -124,10 +127,11 @@ bs2v2 <- function(fileName) {
   # Temporal information is stored in the 'TFLAG' variable
   tflag <- ncvar_get(old_nc, "TFLAG")
   
-  # NOTE:  'TFLAG' is a matrix object with two rows, one containing the year and Julian day, 
-  # NOTE:  the other containing time in HHMMSS format. We will paste matrix elements together
-  # NOTE:  with 'paste()'.  The 'sprintf()' function is useful for C-style string formatting.
-  # NOTE:  Here we use it to add leading 0s to create a string that is six characters long.
+  # NOTE: 'TFLAG' is a matrix object with two rows, one containing the year and 
+  # NOTE: Julian day as YYYYDDD the other containing time in HHMMSS format. 
+  # NOTE: We will paste matrix elements together with 'paste()'.
+  # NOTE: The 'sprintf()' function is useful for C-style string formatting.
+  # NOTE: Here we use it to add leading 0s to create a string that is six characters long.
   time_str <- paste0(tflag[1,], sprintf(fmt="%06d", tflag[2,]))
   
   # We use 'strptime()' to convert our character index to a "POSIXct" value.
@@ -137,9 +141,11 @@ bs2v2 <- function(fileName) {
   
   # Get PM25 values
   # NOTE:  The degenerate 'LAY' dimension disppears so that 'pm25' is now 3D, not 4D. 
-  pm25 <- ncvar_get(old_nc, "PM25")
+  pm25 <- ncvar_get(old_nc, "PM25") # dims=c(lon, lat, time)
   
-  # Convert time to numeric value for storing purposes
+  # Convert time to numeric value for storing purposes. By default R converts
+  # POSIXct to seconds from 1970-01-01. tz must be specified or local will be
+  # used. 
   numericTime <- as.numeric(time)
   
   # Define dimensions
@@ -149,7 +155,8 @@ bs2v2 <- function(fileName) {
   
   # Define variables
   pm25Var <- ncvar_def(name="PM25", units="ug/m^3", 
-                       dim=list(lonDim, latDim, timeDim), missval=-1e30)
+                       dim=list(lonDim, latDim, timeDim), 
+                       missval=-1e30)
   
   # Create a new netcdf file 
   fileName_v2 <- str_replace(fileName, ".nc", "_v2.nc")
@@ -161,22 +168,21 @@ bs2v2 <- function(fileName) {
   # Close the file
   nc_close(new_nc)
   
+  print("Created the new version of the smoke_dispersion.nc file.")
+  
 }
-
-# close original nc connection
-nc_close(nc)
-rm(nc)
 
 # Now run this function on the file we just downloaded
 bs2v2(fileName)
-list.files(pattern='*.nc')
+list.files(path=paste0(home_path,"data/") ,pattern='*.nc')
 
 # working with the raster brick of the nc file
-nc_path <- paste0(home_path, "/data/smoke_dispersion_v2.nc")
+nc_path <- paste0(home_path, "data/smoke_dispersion_v2.nc")
+
 # brick or stack 
 smk_brick <- brick(nc_path)
 
-# Calculate daily average smoke concentration ----------------------------------
+# Calculate daily average smoke concentrations ---------------------------------
 
 # create raster layer of same day mean value
 # note Sept 13: changing to handle carry over smoke
