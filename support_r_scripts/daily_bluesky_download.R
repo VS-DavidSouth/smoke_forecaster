@@ -21,6 +21,7 @@ library(stringr)
 library(raster) # easier to manipulate than netcdf file
 library(rgdal)
 library(RCurl)
+library(lubridate) # for day()
 
 # TODO: consider these as possible user arguments 
 model <- "GFS-0.15deg"
@@ -70,7 +71,7 @@ online_data_path <- paste0(forecast_url, "/combined/data/")
 
 # Create a file connection that will log what this script tries to do and when
 # it tries to do it. 
-download_log <- file("download_log.txt")
+download_log <- file("bluesky_download_log.txt")
 line1 <- paste("Download log for:", Sys.time())
 
 # file specific urls
@@ -98,9 +99,10 @@ if(class(try_locations) == "try-error" | class(try_smoke) == "try-error"){
 } else{
   line4 <- paste("Both fire locations and smoke dispersion downloaded.")
 }
+
 line5 <- paste("Time complete:",Sys.time())
 writeLines(c(line1, line2, line3, line4, line5), con=download_log)
-close(download_log) # Write the logfile
+close(download_log) 
 
 # netcdf file manipulaton ------------------------------------------------------
 fileName <- paste0(home_path,"data/smoke_dispersion.nc")
@@ -191,28 +193,38 @@ bs2v2 <- function(fileName) {
   nc_close(new_nc)
   
   print("Created the new version of the smoke_dispersion.nc file.")
-  
+  return(time) # Handy for indexing values. 
 }
 
-# Now run this function on the file we just downloaded
-bs2v2(fileName)
-list.files(path=paste0(home_path,"data/") ,pattern='*.nc')
+# Now run this function on the file we just downloaded. It returns time array
+# that can be used for slicing the gridded smoke data. 
+timeGMT <- bs2v2(fileName) 
 
 # working with the raster brick of the nc file
 nc_path <- paste0(home_path, "data/smoke_dispersion_v2.nc")
 
-# brick or stack 
+# get nc data as raster as class "RasterBrick"
 smk_brick <- brick(nc_path)
 
 # Calculate daily average smoke concentrations ---------------------------------
 
+# Change timezone to Denver, or MDT (in the smoke season)
+time_GMT    <- as.POSIXct(as.character(time), tz="GMT")
+time_denver <- base::format(time_GMT, tz="America/Denver", usetz=TRUE)
+
+# Get day and unique days that this forecast covers 
+forecastDay <- lubridate::day(time_denver)
+unique_forecast_dates <- unique(forecastDay)
+
 # create raster layer of same day mean value
-# note Sept 13: changing to handle carry over smoke
-same_day_smk <- smk_brick[[1:31]]
+same_day_smk <- smk_brick[[1:31]] # What the hell is 31?????
+
 # create raster layer of mean value
 same_day_mean_smk <- mean(same_day_smk)
-# extract the date without timestamp (taking element date 29 frome 1:29)
+
+# extract the date without timestamp (taking element date 29 from 1:29)
 same_day_date  <- as.numeric(substring(smk_brick@data@names, 2))[15]
+
 # assign date time stamp in a format of month_day_year to bind with name
 same_day_date <- format(as.POSIXct(same_day_date, origin="1970-1-1", tz="GMT"),
                     format = "%b %d %Y")
