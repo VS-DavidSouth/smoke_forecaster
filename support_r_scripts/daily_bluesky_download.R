@@ -257,19 +257,25 @@ save(date_labels, file = paste0(home_path,"/data/date_label.RData"))
 # TODO: update to include more days
 smoke_stack <- brick(same_day_mean_smk, next_day_mean_smk)
 
-# create pm matrix of same-day and next-day values -----
-# this will be used later for population-weighting
-# TODO: more days of smoke here too.... 
+# Create pm matrix of same-day and next-day values. 
+# This will be used later for population-weighting.
+# TODO: add more forecast days of smoke here too.... 
+# NOTE: pm_mat dimensions = [values(length of latxlon) X days forecast]
 pm_mat <- as.matrix(cbind(same_day_mean_smk@data@values, 
                           next_day_mean_smk@data@values))
 
-# convert smoke_stack to polygon/shape
+################################################################################
+# convert smoke_stack to polygon/shape for displaying in the app and overlap
+# calculations.
+################################################################################
 print("-----------------------------------------------------------------------")
 print("converting smoke_stack to polygon....")
 smk_poly <- raster::rasterToPolygons(smoke_stack)
 
-# saving bluesky grid shapefile ----
-# subsetting just the grid so I can calculate spatial overlays
+# saving bluesky grid shapefile. We need to know the bluesky grid for overlay
+# calculations related to the health impact assessment. The grid for a given day
+# from a single forecast (common root nc file) should be the same, so save a 
+# single instance of this grid [,1]. 
 smk_grid <- smk_poly[, 1]
 
 # write smoke grid that doesn't have values, overwrite the existing layer.
@@ -279,9 +285,10 @@ writeOGR(obj = smk_grid,
          overwrite_layer=TRUE,
          driver = "ESRI Shapefile")
 
-# subsetting smk_polygon to only those with values > 5 
-# to make polygon file smaller and easier to project
-smk_poly <- smk_poly[smk_poly$layer.1 > 0 | smk_poly$layer.2 > 0, ]
+# Subset smk_polygon to only those with values > 0. Previously this subset
+# by those that were creater than 5 ugm3. This made for a confusing display where 
+# there were HIA where there were no smoke. This was done to reduce file size. 
+smk_poly_display <- smk_poly[smk_poly$layer.1 > 0 | smk_poly$layer.2 > 0, ]
 
 # remove raster files to save memory
 rm(smoke_brick, 
@@ -289,8 +296,8 @@ rm(smoke_brick,
    next_day_mean_smk, 
    smoke_stack)
 
-# Write gridded smoke polygon --------------------------------------------------
-writeOGR(obj = smk_poly, 
+# Write gridded smoke polygon 
+writeOGR(obj = smk_poly_display, 
          dsn = paste0(home_path,"/data/smk_poly"), 
          layer = "smk_poly", 
          driver = "ESRI Shapefile", 
@@ -299,11 +306,19 @@ writeOGR(obj = smk_poly,
 # remove smk poly to save memory
 rm(smk_poly)
 
-# Calculate population-weighted county smoke pm2.5 values ----------------------
 
+################################################################################
+# Use newly saved PM grid to create bluesky_county_prop_intersect.csv
+################################################################################
+# print("Creating the intersect of bluesky grids with US counties.)
+# source(support_r_scripts/proportion_intersect_bluesky_grid_us_counties.R)
+
+################################################################################
+# Calculate population-weighted county smoke pm2.5 values 
+################################################################################
 # Read in proportion-intersect matrix between grid and county shapes
 # NOTE: attempting to view this table in RStudio will kill RStudio. 
-# NOTE: file created by proportion_intersect_bluesku_grid_us_counties.R 
+# NOTE: file created by proportion_intersect_bluesky_grid_us_counties.R 
 grid_county_pi <- data.table::fread("./data/bluesky_county_prop_intersect.csv")
 
 # Get dimensions for subset indexing
@@ -326,6 +341,10 @@ popden <- population_grid$popden
 # multiply population vector by pm vector. These share a common dimension of
 # county? 
 # NOTE: This is the line that has been killing the app lately. 
+# Dimensions: popden[? X ?] * pm_mat[bluesky grid index X forecast day]
+print(paste("Dimensions of pm_mat:", dim(pm_mat)))
+print(paste("Dimensions of popden:", length(popden)))
+
 pm_pop_mat <- popden * pm_mat
 
 # matrix multiply prop int matrix by population vector for daily summed pm
