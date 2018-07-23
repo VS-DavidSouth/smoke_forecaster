@@ -6,6 +6,8 @@
 # R Version: 3.4.2
 # ------------------------------------------------------------------------------
 
+# TODO: Figure out if this needs to be run in cron. 
+
 # Note I've revised code to use the SF function to calculate intersections
 
 # load libraries ----
