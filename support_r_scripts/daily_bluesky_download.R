@@ -313,6 +313,9 @@ rm(smk_poly)
 # print("Creating the intersect of bluesky grids with US counties.)
 # source(support_r_scripts/proportion_intersect_bluesky_grid_us_counties.R)
 
+# TODO: If statement that chooses the correct population weighting based on
+# TODO: the bluesky grid that is being used. 
+
 ################################################################################
 # Calculate population-weighted county smoke pm2.5 values 
 ################################################################################
@@ -322,13 +325,17 @@ rm(smk_poly)
 grid_county_pi <- data.table::fread("./data/bluesky_county_prop_intersect.csv")
 
 # Get dimensions for subset indexing
-GCP_dim <- dim(grid_county_pi) # GCP = short for "grid_county_pi"
+# GCP = short for "grid_county_pi", second number is number of US counties.
+# This number should not change. 
+GCP_dim <- dim(grid_county_pi) 
 
-# convert "grid_county_pi" to matrix
-# TODO: What on earth is this indexing for??
-pi_mat <- as.matrix(grid_county_pi[,2:3109])
+# Convert "grid_county_pi" to matrix
+# NOTE: names(grid_county_pi) = "grid_id"    "fips_19107" "fips_19189" ...
+# NOTE: For multiplication, we do not want "grid_id", just actual values 
+# NOTE: associated with different counties (columns other than first). 
+pi_mat <- as.matrix(grid_county_pi[, 2:GCP_dim[2]])
 
-# remove grid_county_pi to save space
+# Now that it is available as matrix, remove grid_county_pi to save space
 rm(grid_county_pi)
 
 # Get the population density value vector. 
@@ -338,7 +345,7 @@ population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
 # Get vector of population density
 popden <- population_grid$popden 
 
-# multiply population vector by pm vector. These share a common dimension of
+# mMultiply population vector by pm vector. These share a common dimension of
 # county? 
 # NOTE: This is the line that has been killing the app lately. 
 # Dimensions: popden[? X ?] * pm_mat[bluesky grid index X forecast day]
