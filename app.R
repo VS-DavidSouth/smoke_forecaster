@@ -16,6 +16,7 @@ library(shiny)
 library(leaflet)
 library(rgdal) # for read shapefile
 
+# Polygon color options 
 polyOpacity <- 0.7
 polyBorderOpacity <- 1
 
