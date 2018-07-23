@@ -1,19 +1,18 @@
 # ------------------------------------------------------------------------------
 # Title: Proportion intersect between bluesky grid and US countys
 # Purpose: To create a matrix of proportions to use in population-weighting
-# Author: Ryan Gan
+# Author: Ryan Gan & Steven Brey
 # Date Created: 2017-12-20
 # R Version: 3.4.2
 # ------------------------------------------------------------------------------
 
 # TODO: Figure out if this needs to be run in cron. 
-
-# Note I've revised code to use the SF function to calculate intersections
+# NOTE: I've revised code to use the SF function to calculate intersections
 
 # load libraries ----
 library(tidyverse)
 library(sf)
-# parallel compuation
+# # For parallel compuation (which will be implemented a later day)
 # library(doParallel)
 # library(parallel)
 
@@ -108,15 +107,11 @@ for(i in 1:nCounty){
 } # end of country loop
 options(warn=0) # turn warnings back on
 
-
-# stop cluster
-#stopCluster(cl)
-
 stop_time <- Sys.time()
 compute_time <- stop_time - start_time
 
 # run time
-compute_time
+print(compute_time)
 
 # set missing NA values to 0
 bluesky_county_pi <- prop_int_tibble %>% 
@@ -133,8 +128,10 @@ bluesky_county_pi <- prop_int_tibble %>%
 
 # save final proportion intersect ----
 # TODO: make new name, do not overwrite right away 
-save_path <- "./data/bluesky_county_prop_intersect_TEST.csv"
-write_csv(bluesky_county_pi, save_path)
+nCells <- dim(bluesky_county_pi)[1] # is the number of rows 
+save_name <- paste0("bluesky_county_prop_intersect_", nCells, ".csv")
+save_path <- "./data/"
+write_csv(bluesky_county_pi, save_name)
 
 # # save california fips for checking
 # save_cali <- "./data/cali_county_pi.csv"
