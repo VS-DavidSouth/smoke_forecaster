@@ -4,13 +4,12 @@
 # Date Created: 6/19/2017. Heavy modification began 7/20/2018. See github.
 # Created under R Version: 3.3.3
 # ------------------------------------------------------------------------------
-
-# This is run in a crontab. This is done daily. We need to do this more often
-# and provide information on whether it is pulled. The crontab is on salix.
-
-# only have ED visits for certain things, no cardio vascular, HIA calculations 
-# are known by 
-
+#
+# This is run in a crontab. The following code shows the current setting for
+# the crontab on the server computer:
+#
+# 00 10 * * * Rscript APP_DIR/support_r_scripts/daily_bluesky_download.R
+#
 # Note: Code directly from mazamascience to download their USFS BlueSky runs
 # http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.html#downloadbsoutput\
 
@@ -21,11 +20,10 @@ library(raster) # easier to manipulate than netcdf file
 library(rgdal)
 library(RCurl)
 library(lubridate) # for day()
+library(data.table) # will interfere with lubridate so use libridate::FUNCTION
 
 # TODO: consider these as possible user arguments 
 model <- "GFS-0.15deg"
-
-# set up working directory
 setwd("/srv/www/rgan/smoke_forecaster")
 
 # define path to repository for the server for writing files
@@ -64,6 +62,9 @@ if ( url.exists( paste0(todays_dir,"12/combined") ) ){
   forecast_url <- paste0(url_base, gsub("-","", yesterday), "12/combined")
   
 }
+
+# TODO: See if this file already exists!!!! If it does, halt this script here
+# TODO: and do nothing until the file is new! 
 
 # Create path to online data directory for last available model run
 online_data_path <- paste0(forecast_url, "/data/")
@@ -201,7 +202,7 @@ bs2v2 <- function(fileName) {
 
 # Now run this function on the file we just downloaded. It returns time array
 # that can be used for slicing the gridded smoke data. 
-timeGMT <- bs2v2(fileName) 
+time_nc <- bs2v2(fileName) 
 
 # working with the raster brick of the nc file
 nc_path <- paste0(home_path, "data/smoke_dispersion_v2.nc")
@@ -214,7 +215,7 @@ smoke_brick <- brick(nc_path)
 ################################################################################
 
 # Change timezone to Denver, or MDT (in the smoke season)
-time_GMT    <- as.POSIXct(as.character(time), tz="GMT")
+time_GMT    <- as.POSIXct(as.character(time_nc), tz="GMT")
 time_denver <- as.POSIXct(base::format(time_GMT, tz="America/Denver", usetz=TRUE))
 
 # Get day and unique days that this forecast covers 
@@ -238,9 +239,10 @@ same_day_mean_smk <- mean(smoke_brick[[t_index]])
 same_day_date <- unique( format(time_denver[t_index], format = "%b %d %Y") )
 
 t_index <- which((todays_day_numeric+1)==forecastDay)
-next_day_smk <- mean(smoke_brick[[t_index]])
+next_day_mean_smk <- mean(smoke_brick[[t_index]])
 next_day_date <- unique( format(time_denver[t_index], format = "%b %d %Y") )
 
+# TODO: Same more dates data and use the actual dates as the labels. 
 # creating a vector of the character dates and saving to use in shiny labels
 # note I think it's easier to save as a seperate file than label the layers of 
 # the shape layers; I suspect less bugs with generic names in the shapefile than
@@ -252,55 +254,78 @@ save(date_labels, file = paste0(home_path,"/data/date_label.RData"))
 
 # create raster brick and create spatial polygon ----
 # make raster brick of same_day and next_day mean smoke
+# TODO: update to include more days
 smoke_stack <- brick(same_day_mean_smk, next_day_mean_smk)
 
 # create pm matrix of same-day and next-day values -----
 # this will be used later for population-weighting
+# TODO: more days of smoke here too.... 
 pm_mat <- as.matrix(cbind(same_day_mean_smk@data@values, 
                           next_day_mean_smk@data@values))
 
 # convert smoke_stack to polygon/shape
-smk_poly <- rasterToPolygons(smoke_stack)
+print("-----------------------------------------------------------------------")
+print("converting smoke_stack to polygon....")
+smk_poly <- raster::rasterToPolygons(smoke_stack)
 
 # saving bluesky grid shapefile ----
-# this will be commented out once it's done
-# #subsetting just the grid so I can calculate spatial overlays
-# smk_grid <- smk_poly[, 1]
-# # write smoke grid that doesn't have values
-# writeOGR(obj = smk_grid, dsn = "./data/bluesky_grid", layer = "bluesky_grid",
-#          driver = "ESRI Shapefile")
+# subsetting just the grid so I can calculate spatial overlays
+smk_grid <- smk_poly[, 1]
+
+# write smoke grid that doesn't have values, overwrite the existing layer.
+writeOGR(obj = smk_grid, 
+         dsn = "./data/bluesky_grid", 
+         layer = "bluesky_grid",
+         overwrite_layer=TRUE,
+         driver = "ESRI Shapefile")
 
 # subsetting smk_polygon to only those with values > 5 
 # to make polygon file smaller and easier to project
-smk_poly <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
+smk_poly <- smk_poly[smk_poly$layer.1 > 0 | smk_poly$layer.2 > 0, ]
 
-# remove raster files to save space
-rm(smk_brick, same_day_smk, same_day_mean_smk, next_day_smk,
-   next_day_mean_smk, smoke_stack)
+# remove raster files to save memory
+rm(smoke_brick, 
+   same_day_mean_smk, 
+   next_day_mean_smk, 
+   smoke_stack)
 
 # Write gridded smoke polygon --------------------------------------------------
-writeOGR(obj = smk_poly, dsn = paste0(home_path,"/data/smk_poly"), 
-         layer = "smk_poly", driver = "ESRI Shapefile", overwrite_layer = T)
+writeOGR(obj = smk_poly, 
+         dsn = paste0(home_path,"/data/smk_poly"), 
+         layer = "smk_poly", 
+         driver = "ESRI Shapefile", 
+         overwrite_layer = T)
 
-# remove smk poly to save room
+# remove smk poly to save memory
 rm(smk_poly)
 
-# Calculate population-weighted county smk pm2.5 values ------------------------
+# Calculate population-weighted county smoke pm2.5 values ----------------------
+
 # Read in proportion-intersect matrix between grid and county shapes
+# NOTE: attempting to view this table in RStudio will kill RStudio. 
+# NOTE: file created by proportion_intersect_bluesku_grid_us_counties.R 
 grid_county_pi <- data.table::fread("./data/bluesky_county_prop_intersect.csv")
 
-# convert to matrix
+# Get dimensions for subset indexing
+GCP_dim <- dim(grid_county_pi) # GCP = short for "grid_county_pi"
+
+# convert "grid_county_pi" to matrix
+# TODO: What on earth is this indexing for??
 pi_mat <- as.matrix(grid_county_pi[,2:3109])
+
 # remove grid_county_pi to save space
 rm(grid_county_pi)
 
-# population density value vector
-# read 2015 bluesky population density
+# Get the population density value vector. 
+# This csv was created by bluesky_grid_population_vector.R 
 population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
-# create vector of population density
+
+# Get vector of population density
 popden <- population_grid$popden 
 
-# multiply population vector by pm vector
+# multiply population vector by pm vector. These share a common dimension of
+# county? 
+# NOTE: This is the line that has been killing the app lately. 
 pm_pop_mat <- popden * pm_mat
 
 # matrix multiply prop int matrix by population vector for daily summed pm
