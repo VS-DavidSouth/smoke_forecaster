@@ -91,8 +91,8 @@ hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), domain = c(1, max(hia_bin)),
 
 # read in saved R dates ----
 load("./data/date_label.RData")
-date_labels[1] <- paste(date_labels[1], "today")
-date_labels[2] <- paste(date_labels[2], "tomorrow")
+date_labels[1] <- paste(date_labels[1], "(today)")
+date_labels[2] <- paste(date_labels[2], "(tomorrow)")
 
 # create date names list to use with the radio button
 date_list <- list("layer_1", "layer_2")
@@ -108,13 +108,15 @@ head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/issues", "Report Bug")),
   title = "Smoke HIA Forecaster (beta)",
   titleWidth = 300
-  )
+)
 
 # side bar
 side <- dashboardSidebar(
   # reactive sidebar
-  selectInput(inputId="date_smoke", label = h3("Date to Forecast"),
-              choices = date_list, selected = "layer_1")
+  selectInput(inputId="date_smoke", 
+              label = h3("Date to Forecast"),
+              choices = date_list, 
+              selected = "layer_1")
 ) # end side bar
 
 
@@ -158,26 +160,29 @@ server <- (function(input, output){
             )
           )
         )
-      )
+      ) %>%
       
-      # TODO: Until these legends are more clearly explained, or have links to
-      # TODO: informative documentation and are different colors, they are going
-      # TODO: to be hidden. 
+      
       # add legend for smoke values
-      # addLegend(pal=pal, values=c(0, 1000),
-      #           title = htmltools::HTML("Smoke <span>&#181;</span>g/m<sup>3</sup>"),
-      #           position = "bottomleft")#, group="Legends")
-      # 
-      # # add respiratory legend
-      # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
-      #           title = htmltools::HTML("Asthma <br> Relative Risk"),
-      #           position = "bottomright") %>% 
-      # 
-      # add respiratory legend
-      # addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
-      #           title = htmltools::HTML("Respiratory <br> Relative Risk"),
-      #           position = "bottomright",
-      #           group="Legends")
+      addLegend(pal=pal, 
+                values=c(0, 1000),
+                title = htmltools::HTML("24-hr Smoke PM<sub>2.5</sub> [<span>&#181;</span>g/m<sup>3</sup>]"),
+                position = "bottomleft",
+                group="Forecasted Smoke")
+    
+    # TODO: Until these legends are more clearly explained, or have links to
+    # TODO: informative documentation and are different colors, they are going
+    # TODO: to be hidden. 
+    # # add respiratory legend
+    # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
+    #           title = htmltools::HTML("Asthma <br> Relative Risk"),
+    #           position = "bottomright") %>% 
+    # 
+    # add respiratory legend
+    # addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
+    #           title = htmltools::HTML("Respiratory <br> Relative Risk"),
+    #           position = "bottomright",
+    #           group="Legends")
     
   })# end base leaflet
   
@@ -230,11 +235,18 @@ server <- (function(input, output){
                     fillColor = "transparent", color = "black", weight = 2) %>%
       
       # add smoke polygons 
-      addPolygons(data = smk_forecast, group = "Smoke", color = "transparent", 
-                  fillColor = ~pal(vals()), weight=1, smoothFactor=1, fillOpacity=polyOpacity, 
+      addPolygons(data = smk_forecast, 
+                  group = "Forecasted Smoke", 
+                  color = "transparent", 
+                  fillColor = ~pal(vals()), 
+                  weight=1, 
+                  smoothFactor=1, 
+                  fillOpacity=polyOpacity, 
                   # add highlight option
-                  highlight = highlightOptions(weight = 5, color = "blue", 
-                                               bringToFront = T, fillOpacity = polyBorderOpacity),
+                  highlight = highlightOptions(weight = 5, 
+                                               color = "blue", 
+                                               bringToFront = T, 
+                                               fillOpacity = polyBorderOpacity),
                   # add smoke pm values
                   label = pm_label,
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
@@ -247,18 +259,25 @@ server <- (function(input, output){
       addPolygons(data = county_hia, 
                   group = "HIA", 
                   color = "transparent",
-                  fillColor = ~hia_pal(hia_vals()), weight=1, smoothFactor=1, fillOpacity=polyOpacity,
+                  fillColor = ~hia_pal(hia_vals()), 
+                  weight=1, 
+                  smoothFactor=1, 
+                  fillOpacity=polyOpacity,
                   # add highlight option
-                  highlight = highlightOptions(weight = 5, color = "red", 
-                                               bringToFront = T, fillOpacity = polyBorderOpacity),
+                  highlight = highlightOptions(weight = 5, 
+                                               color = "red", 
+                                               bringToFront = T, 
+                                               fillOpacity = polyBorderOpacity),
                   # add hia resp est values
                   #label = hia_label,
                   label=paste0(county_hia@data$NAME, " county ",
-                              "(population ", county_hia@data$Pop,"), ",
-                              "Emergency Department vists: ", hia_vals()),
+                               "(population ", county_hia@data$Pop,"), ",
+                               "Emergency Department vists: ", hia_vals()),
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
                                                            padding = "3px 8px"), 
-                                              textsize = "12px", direction = "auto"))  %>% 
+                                              textsize = "12px", 
+                                              direction = "auto")
+      )  %>% 
       
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
@@ -267,18 +286,16 @@ server <- (function(input, output){
                        radius = ~sqrt(area/100), 
                        fill=F, 
                        weight = 0.5,
-                       group="Fires") %>% 
+                       group="Fire Locations") %>% 
       
       # add layer control
       addLayersControl(
-        baseGroups = c("Smoke"),
-        overlayGroups = c("Smoke", "HIA", "Fires", "Legends"),
+        overlayGroups = c("Forecasted Smoke", "HIA", "Fire Locations"),
         options = layersControlOptions(collapsed = F)
       ) %>%
       
       # Set defualt hidden groups 
-      hideGroup("Fires")#%>%
-      #hideGroup("Legends")
+      hideGroup(group=c("HIA"))
     
     
   }) # end reactive layer
