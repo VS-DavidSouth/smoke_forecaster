@@ -57,19 +57,21 @@ county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 # define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
 bin <- c(0, 10, 20, 30, 40, 50, 100, 250, 1000)
-pal <- colorBin(c("gray", "red"), domain = c(0,1000), bins = bin,
-                na.color = "transparent") # "#F0F2F0", "#000c40"
+pal <- colorBin(c("gray", "red", "purple"), 
+                domain = c(0,1000), 
+                bins = bin,
+                na.color = "black") # "#F0F2F0", "#000c40"
 
 ################################################################################
 # Ryan, what is going on here in this section. Where do these numbers come from?
 # add another legend for relative risk resp
-resp_bin <- round(exp((bin/10)*0.0507),2)
+resp_bin <- round(exp((bin/10)*0.0507), 2)
 
 # resp pal
 resp_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(resp_bin)), 
                      bins = resp_bin, na.color = "red") # "transparent" to hide, if desired
 # asthma
-asthma_bin <- round(exp((bin/10)*0.0733),2)
+asthma_bin <- round(exp((bin/10)*0.0733), 2)
 
 # asthma pal 
 # TODO: Make different from 'resp pal'
@@ -106,8 +108,8 @@ head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:sjbrey@rams.colostate.edu", "Contact us")),
   tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/issues", "Report Bug")),
-  title = "Smoke HIA Forecaster (beta)",
-  titleWidth = 300
+  title = "Smoke Health Impact Assessment (HIA) Forecaster (beta)",
+  titleWidth = 550
 )
 
 # side bar
@@ -173,16 +175,16 @@ server <- (function(input, output){
     # TODO: Until these legends are more clearly explained, or have links to
     # TODO: informative documentation and are different colors, they are going
     # TODO: to be hidden. 
-    # # add respiratory legend
+    # add respiratory legend
     # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
     #           title = htmltools::HTML("Asthma <br> Relative Risk"),
-    #           position = "bottomright") %>% 
-    # 
-    # add respiratory legend
+    #           position = "bottomright")
+
+    # #add respiratory legend
     # addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
     #           title = htmltools::HTML("Respiratory <br> Relative Risk"),
     #           position = "bottomright",
-    #           group="Legends")
+    #           group="HIA")
     
   })# end base leaflet
   
@@ -199,9 +201,9 @@ server <- (function(input, output){
     # Smoke Concentration: value ug/m^3 \return
     # Relative Increase in Risk: value %
     pm_label <- sprintf(paste0(
-      "<strong>Smoke Concentration: %g <span>&#181;</span>g/m<sup>3</sup></strong>",
-      "<br> Respiratory Relative Risk: %g",
-      "<br> Asthma Relative Risk: %g"), 
+      "<strong>24-hr smoke concentration: %g <span>&#181;</span>g/m<sup>3</sup></strong>",
+      "<br><strong>Respiratory Relative Risk: %g</strong>",
+      "<br><strong>Asthma Relative Risk: %g</strong>"), 
       # number for smoke concentration
       round(vals(),1),
       # number for relative risk respiratory
@@ -269,10 +271,10 @@ server <- (function(input, output){
                                                bringToFront = T, 
                                                fillOpacity = polyBorderOpacity),
                   # add hia resp est values
-                  #label = hia_label,
-                  label=paste0(county_hia@data$NAME, " county ",
-                               "(population ", county_hia@data$Pop,"), ",
-                               "Emergency Department vists: ", hia_vals()),
+                  label = hia_label,
+                  # label=paste0(county_hia@data$NAME, " county ",
+                  #              "(population ", county_hia@data$Pop,"), ",
+                  #              "Emergency Department vists: ", hia_vals()),
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
                                                            padding = "3px 8px"), 
                                               textsize = "12px", 
