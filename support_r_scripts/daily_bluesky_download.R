@@ -324,11 +324,10 @@ print("-----------------------------------------------------------------------")
 print("converting smoke_stack to polygon....")
 smk_poly <- raster::rasterToPolygons(smoke_stack_app)
 
-
-# Subset smk_polygon to only those with values > 0. Previously this subset
-# by those that were creater than 5 ugm3. This made for a confusing display where 
-# there were HIA where there were no smoke. This was done to reduce file size. 
-smk_poly_display <- smk_poly[smk_poly$layer.1 > PMThresh & smk_poly$layer.2 > PMThresh, ]
+# Subset smk_polygon to only those with values > PMThresh. Make two different
+# files for the two forecast days. 
+smk_poly_display_1 <- smk_poly["layer.1"][smk_poly@data$layer.1 >= PMThresh,]
+smk_poly_display_2 <- smk_poly["layer.2"][smk_poly@data$layer.2 >= PMThresh,]
 
 # remove raster files to save memory
 rm(smoke_brick, 
@@ -337,9 +336,15 @@ rm(smoke_brick,
    smoke_stack)
 
 # Write gridded smoke polygon 
-writeOGR(obj = smk_poly_display, 
+writeOGR(obj = smk_poly_display_1, 
          dsn = paste0(home_path,"/data/smk_poly"), 
-         layer = "smk_poly", 
+         layer = "smk_poly_1", 
+         driver = "ESRI Shapefile", 
+         overwrite_layer = T)
+
+writeOGR(obj = smk_poly_display_2, 
+         dsn = paste0(home_path,"/data/smk_poly"), 
+         layer = "smk_poly_2", 
          driver = "ESRI Shapefile", 
          overwrite_layer = T)
 
@@ -458,8 +463,8 @@ us_shape$FIPS <- us_shape$GEOID
 us_shape <- sp::merge(us_shape, hia_est, by = "FIPS")
 
 # subset to counties with hia estimates of at least 1
-us_shape <- us_shape[(us_shape$same_day_pm > PMThresh & us_shape$same_day_resp_ed > 1) | 
-                     (us_shape$next_day_pm > PMThresh & us_shape$next_day_resp_ed > 1), ]
+us_shape <- us_shape[(us_shape$same_day_pm >= PMThresh & us_shape$same_day_resp_ed > 1) | 
+                     (us_shape$next_day_pm >= PMThresh & us_shape$next_day_resp_ed > 1), ]
 
 # rename truncated variable names; renamed hia estimates to layer_1 and layer_2
 # to match gridded bluesky forecasts of smoke labels
