@@ -41,9 +41,9 @@ pal_fire <- colorFactor(
 # define relative path to polygon file
 poly_path <- "./data/smk_poly"
 
-# read bluesky forecast polygon for the two forecasted dates 
+# # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
-smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2") 
+smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
 hia_path <- "./data/hia_poly"
@@ -78,6 +78,13 @@ asthma_bin <- round(exp((bin/10)*0.0733), 2)
 # TODO: Make different from 'resp pal'
 asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
                        bins = asthma_bin, na.color = "transparent")
+
+# ER pal 
+# ER_min <- 1
+# ER_max <- 100#max(c(county_hia@data$layer_1, county_hia@data$layer_1))
+# ER_bin <- c(1,20,40,60,80,100)
+# ER_pal <- colorBin(c("blue", "orange"), domain = c(1,max(ER_bin)), 
+#                    bins = ER_bin, na.color = "red")
 ################################################################################
 
 # define color bin for hia estimates
@@ -86,7 +93,7 @@ asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)),
 hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
 
 # hia pallet
-hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), 
+hia_pal <- colorBin(c("blue", "orange"), 
                     domain = c(1, max(hia_bin)),
                     bins = hia_bin, 
                     na.color="transparent")
@@ -182,16 +189,14 @@ server <- (function(input, output){
                 values=c(0, 1000),
                 title = htmltools::HTML("24-hr Smoke PM<sub>2.5</sub> [<span>&#181;</span>g/m<sup>3</sup>]"),
                 position = "bottomleft",
-                group="Forecasted Smoke") #%>%
+                group="Forecasted Smoke") %>%
     
-      # addLegend(pal=c("red", "green"), 
-      #           values=c("WF", "RX"),
-      #           title = htmltools::HTML("<strong>Fire Type</strong>"),
-      #           position = "bottomleft",
-      #           group="Fire Locations")
-    
-    # TODO: Legend for number of ER visits only. 
-    
+      addLegend(pal=hia_pal,
+                values=hia_bin,
+                title = htmltools::HTML("<strong>ER Visits</strong>"),
+                position = "bottomleft",
+                group="HIA")
+
   })# end base leaflet
   
   # add interactive polygon layers -----
