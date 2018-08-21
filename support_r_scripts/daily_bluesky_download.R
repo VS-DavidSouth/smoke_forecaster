@@ -1,3 +1,10 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+if(length(args)>0){
+  machine_name <- args[1]
+}else{
+  machine_name <- "local"
+}
 # ------------------------------------------------------------------------------
 # Title: Daily BlueSky forecast download and data management
 # Authors: Ryan Gan & Steven Brey 
@@ -8,7 +15,7 @@
 # This is run in a crontab. The following code shows the current setting for
 # the crontab on the server computer:
 #
-# 00 10 * * * Rscript APP_DIR/support_r_scripts/daily_bluesky_download.R
+# 00 10 * * * Rscript APP_DIR/support_r_scripts/daily_bluesky_download.R salix
 #
 # Note: Code directly from mazamascience to download their USFS BlueSky runs
 # http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.html#downloadbsoutput\
@@ -26,14 +33,16 @@ library(data.table) # will interfere with lubridate so use libridate::FUNCTION
 # RG 2018-08-16: Ask Steve to explain his thought here
 # SB 2018-08-21: I think we may use different models output in the future. 
 model <- "GFS-0.15deg"
-setwd("/srv/www/rgan/smoke_forecaster")
+PMThresh <- 2
 
-# define path to repository for the server for writing files
-home_path <- paste0("/srv/www/rgan/smoke_forecaster")
-#home_path <- paste0(getwd(), "/")
-
-# RG 2018-08-16: Defining local home directory
-#home_path <- paste0(getwd(), "/")
+if(machine_name == "salix"){
+  setwd("/srv/www/rgan/smoke_forecaster")
+  # define path to repository for the server for writing files
+  home_path <- paste0("/srv/www/rgan/smoke_forecaster")
+}else{
+  # Local development taking place. 
+  home_path <- paste0(getwd(), "/")
+}
 
 # download bluesky daily output -----------------------------------------------
 
@@ -136,8 +145,7 @@ bs2v2 <- function(fileName) {
   # open nc file
   old_nc <- nc_open(fileName)
   
-# Create latitude and longitude axes ----
-
+  # Create latitude and longitude axes 
   # Current (index) values
   row <- old_nc$dim$ROW$vals # lat 
   col <- old_nc$dim$COL$vals # lon
@@ -172,7 +180,7 @@ bs2v2 <- function(fileName) {
   tflag <- ncvar_get(old_nc, "TFLAG")
   
   # NOTE: 'TFLAG' is a matrix object with two rows, one containing the year and 
-  # NOTE: Julian day as YYYYDDD the other containing time in HHMMSS format. 
+  # NOTE: julian day as YYYYDDD the other containing time in HHMMSS format. 
   # NOTE: We will paste matrix elements together with 'paste()'.
   # NOTE: The 'sprintf()' function is useful for C-style string formatting.
   # NOTE: Here we use it to add leading 0s to create a string that is six characters long.
@@ -235,7 +243,7 @@ time_GMT    <- as.POSIXct(as.character(time_nc), tz="GMT")
 time_denver <- as.POSIXct(base::format(time_GMT, tz="America/Denver", usetz=TRUE))
 
 # Get day and unique days that this forecast covers 
-forecastDay <- lubridate::day(time_denver)
+forecastDay <- lubridate::day(time_denver) # of month
 unique_forecast_dates <- sort(unique(forecastDay))
 
 # Figure out the first date we have a full 24 hour forecast for
@@ -254,9 +262,13 @@ same_day_mean_smk <- mean(smoke_brick[[t_index]])
 # extract the date without timestamp (taking element date 29 from 1:29)
 same_day_date <- unique( format(time_denver[t_index], format = "%b %d %Y") )
 
+# Take the mean of the next day smoke values 
 t_index <- which((todays_day_numeric+1)==forecastDay)
 next_day_mean_smk <- mean(smoke_brick[[t_index]])
 next_day_date <- unique( format(time_denver[t_index], format = "%b %d %Y") )
+
+# A third day
+
 
 # TODO: Same more dates data and use the actual dates as the labels. 
 # creating a vector of the character dates and saving to use in shiny labels
@@ -312,29 +324,11 @@ print("-----------------------------------------------------------------------")
 print("converting smoke_stack to polygon....")
 smk_poly <- raster::rasterToPolygons(smoke_stack_app)
 
-# TODO: Review if this chunk of code needs to be run each time -----------------
-# RG 2018-08-16: Steve, is the following section new? I think with the regrid
-# approach, we don't need to recalculate proportion intersect. I'm going to
-# comment it out
-
-# saving bluesky grid shapefile. We need to know the bluesky grid for overlay
-# calculations related to the health impact assessment. The grid for a given day
-# from a single forecast (common root nc file) should be the same, so save a 
-# single instance of this grid [,1]. 
-# smk_grid <- smk_poly[, 1]
-# 
-# # write smoke grid that doesn't have values, overwrite the existing layer.
-# writeOGR(obj = smk_grid, 
-#          dsn = "./data/bluesky_grid", 
-#          layer = "bluesky_grid",
-#          overwrite_layer=TRUE,
-#          driver = "ESRI Shapefile")
-# End Review -------------------------------------------------------------------
 
 # Subset smk_polygon to only those with values > 0. Previously this subset
 # by those that were creater than 5 ugm3. This made for a confusing display where 
 # there were HIA where there were no smoke. This was done to reduce file size. 
-smk_poly_display <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
+smk_poly_display <- smk_poly[smk_poly$layer.1 > PMThresh & smk_poly$layer.2 > PMThresh, ]
 
 # remove raster files to save memory
 rm(smoke_brick, 
@@ -351,15 +345,6 @@ writeOGR(obj = smk_poly_display,
 
 # remove smk poly to save space
 rm(smk_poly)
-
-################################################################################
-# Use newly saved PM grid to create bluesky_county_prop_intersect.csv
-################################################################################
-# print("Creating the intersect of bluesky grids with US counties.)
-# source(support_r_scripts/proportion_intersect_bluesky_grid_us_counties.R)
-
-# TODO: If statement that chooses the correct population weighting based on
-# TODO: the bluesky grid that is being used. 
 
 ################################################################################
 # Calculate population-weighted county smoke pm2.5 values 
@@ -473,8 +458,8 @@ us_shape$FIPS <- us_shape$GEOID
 us_shape <- sp::merge(us_shape, hia_est, by = "FIPS")
 
 # subset to counties with hia estimates of at least 1
-us_shape <- us_shape[(us_shape$same_day_pm > 5 & us_shape$same_day_resp_ed > 1) | 
-                     (us_shape$next_day_pm > 5 & us_shape$next_day_resp_ed > 1), ]
+us_shape <- us_shape[(us_shape$same_day_pm > PMThresh & us_shape$same_day_resp_ed > 1) | 
+                     (us_shape$next_day_pm > PMThresh & us_shape$next_day_resp_ed > 1), ]
 
 # rename truncated variable names; renamed hia estimates to layer_1 and layer_2
 # to match gridded bluesky forecasts of smoke labels
