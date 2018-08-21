@@ -112,6 +112,12 @@ try_locations <- try(download.file(url = fire_locations_url,
                                    mode = "wb")
                      )
 
+# Re-save this as an Rdataframe with subset rows so that the app runs faster
+fire_locations <- read.csv("./data/fire_locations.csv")
+column_mask <- names(fire_locations) %in% c("latitude", "longitude", "type", "area")
+fire_locations <- fire_locations[,column_mask]
+save(fire_locations, file="data/fire_locations.RData")
+
 # Get smoke dispersion output ----
 try_smoke <- try(download.file(url = smoke_dispersion_url, 
                                destfile = paste0(home_path, "data/smoke_dispersion.nc"), 
