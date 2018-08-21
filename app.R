@@ -5,7 +5,6 @@
 # R Version 3.4.0 
 # ------------------------------------------------------------------------------
 
-
 # note this script contains both ui and server function. I modified to make this 
 # version lighter as the server can't handle the raster brick. That code still
 # exists in the ui and server code.
@@ -15,6 +14,11 @@ library(shinydashboard)
 library(shiny)
 library(leaflet)
 library(rgdal) # for read shapefile
+library(stringr)
+
+# Get information on when smoke data were last downloaded
+forecast_date <- stringr::str_sub(readLines("bluesky_download_log.txt")[2], 16, 23)
+forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 17)
 
 # Polygon color options 
 polyOpacity <- 0.7
@@ -103,6 +107,8 @@ names(date_list) <- date_labels
 # read in fire locations ----
 fire_locations <- read.csv("./data/fire_locations.csv")
 
+# TODO: Current conditions
+
 # shiny dash board ui ----
 head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/blob/development/README.md", "About")),
@@ -116,9 +122,16 @@ head <- dashboardHeader(
 side <- dashboardSidebar(
   # reactive sidebar
   selectInput(inputId="date_smoke", 
-              label = h3("Date to Forecast"),
+              label = h3("Date to forecast"),
               choices = date_list, 
-              selected = "layer_1")
+              selected = "layer_1"),
+  
+  # Show the forecast hour for the smoke data being displayed
+  fluidRow(
+    column(align="center", width=12,
+           p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
+    )
+  )
 ) # end side bar
 
 
@@ -127,7 +140,7 @@ body <- dashboardBody(
   # set tag style
   tags$style(type = "text/css", "#map {height: calc(100vh - 80px) !important;}"),
   leafletOutput("map")
-)# end dashboard body
+) # end dashboard body
 
 
 # ui function with dashboard header, side, and body
