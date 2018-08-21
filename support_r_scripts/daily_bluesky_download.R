@@ -36,9 +36,9 @@ model <- "GFS-0.15deg"
 PMThresh <- 2
 
 if(machine_name == "salix"){
-  setwd("/srv/www/rgan/smoke_forecaster")
+  setwd("/srv/www/rgan/smoke_forecaster/")
   # define path to repository for the server for writing files
-  home_path <- paste0("/srv/www/rgan/smoke_forecaster")
+  home_path <- paste0("/srv/www/rgan/smoke_forecaster/")
 }else{
   # Local development taking place. 
   home_path <- paste0(getwd(), "/")
