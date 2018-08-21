@@ -40,13 +40,10 @@ pal_fire <- colorFactor(
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
 poly_path <- "./data/smk_poly"
-poly_layer <- "smk_poly"
 
-# read bluesky forecast polygon
-# TODO: Make sure the file exists first. If it does not, generate user friendly
-# TODO: error message. 
-# TODO: What are the different layers in this SPDF? 
-smk_forecast <- readOGR(dsn = poly_path, layer = poly_layer)
+# read bluesky forecast polygon for the two forecasted dates 
+smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
+smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2") 
 
 # read in hia estimate ----
 hia_path <- "./data/hia_poly"
@@ -60,7 +57,7 @@ county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
-bin <- c(0, 10, 20, 30, 40, 50, 100, 250, 1000)
+bin <- c(2, 10, 20, 30, 40, 50, 100, 250, 1000)
 pal <- colorBin(c("gray", "red", "purple"), 
                 domain = c(0,1000), 
                 bins = bin,
@@ -89,8 +86,10 @@ asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)),
 hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
 
 # hia pallet
-hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), domain = c(1, max(hia_bin)),
-                    bins = hia_bin, na.color="transparent")
+hia_pal <- colorBin(c("#fcb045", "#fd1d1d"), 
+                    domain = c(1, max(hia_bin)),
+                    bins = hia_bin, 
+                    na.color="transparent")
 
 # Note 2017-12-29: Think about the best way to represent the scales;
 # it may be okay to redefine them every day
@@ -183,21 +182,15 @@ server <- (function(input, output){
                 values=c(0, 1000),
                 title = htmltools::HTML("24-hr Smoke PM<sub>2.5</sub> [<span>&#181;</span>g/m<sup>3</sup>]"),
                 position = "bottomleft",
-                group="Forecasted Smoke")
+                group="Forecasted Smoke") #%>%
     
-    # TODO: Until these legends are more clearly explained, or have links to
-    # TODO: informative documentation and are different colors, they are going
-    # TODO: to be hidden. 
-    # add respiratory legend
-    # addLegend(pal = asthma_pal, values= c(min(asthma_bin), max(asthma_bin)),
-    #           title = htmltools::HTML("Asthma <br> Relative Risk"),
-    #           position = "bottomright")
-
-    # #add respiratory legend
-    # addLegend(pal = resp_pal, values= c(min(resp_bin), max(resp_bin)),
-    #           title = htmltools::HTML("Respiratory <br> Relative Risk"),
-    #           position = "bottomright",
-    #           group="HIA")
+      # addLegend(pal=c("red", "green"), 
+      #           values=c("WF", "RX"),
+      #           title = htmltools::HTML("<strong>Fire Type</strong>"),
+      #           position = "bottomleft",
+      #           group="Fire Locations")
+    
+    # TODO: Legend for number of ER visits only. 
     
   })# end base leaflet
   
@@ -207,10 +200,19 @@ server <- (function(input, output){
     # set index as 1 or 2 for easier index
     layer_name <- as.character(input$date_smoke)
     
+    print("layer_name")
+    print(layer_name)
+    
     # define reactive label values of smoke concentrations and relative risks
     # TODO: Give vals a more descriptive name 
-    vals <- reactive({getElement(smk_forecast@data, layer_name)})
-    
+    if(layer_name == "layer_1"){
+      vals <- reactive({getElement(smk_forecast_1@data, layer_name)})
+      smk_forecast_display <- smk_forecast_1
+    } else{
+      vals <- reactive({getElement(smk_forecast_2@data, layer_name)})
+      smk_forecast_display <- smk_forecast_2
+    }
+
     # Smoke Concentration: value ug/m^3 \return
     # Relative Increase in Risk: value %
     pm_label <- sprintf(paste0(
@@ -246,11 +248,16 @@ server <- (function(input, output){
     leafletProxy(mapId="map") %>%
       clearShapes() %>% 
       # set a box that defines the dimensions of bluesky forecast
-      addRectangles(lng1=-130.0,lng2= -59.95, lat1=22.5, lat2=52.5,
-                    fillColor = "transparent", color = "black", weight = 2) %>%
+      addRectangles(lng1=-130.0,
+                    lng2= -59.95, 
+                    lat1=22.5, 
+                    lat2=52.5,
+                    fillColor = "transparent", 
+                    color = "black", 
+                    weight = 2) %>%
       
       # add smoke polygons 
-      addPolygons(data = smk_forecast, 
+      addPolygons(data = smk_forecast_display, 
                   group = "Forecasted Smoke", 
                   color = "transparent", 
                   fillColor = ~pal(vals()), 
@@ -301,7 +308,8 @@ server <- (function(input, output){
                        radius = ~sqrt(area/100), 
                        fill=F, 
                        weight = 0.5,
-                       group="Fire Locations") %>% 
+                       group="Fire Locations",
+                       label=paste0("Type: ",fire_locations$type, " | Area: ", round(fire_locations$area))) %>% 
       
       # add layer control
       addLayersControl(
