@@ -23,11 +23,15 @@ library(lubridate) # for day()
 library(data.table) # will interfere with lubridate so use libridate::FUNCTION
 
 # TODO: consider these as possible user arguments 
+# RG 2018-08-16: Ask Steve to explain his thought here
 model <- "GFS-0.15deg"
 setwd("/srv/www/rgan/smoke_forecaster")
 
 # define path to repository for the server for writing files
 home_path <- paste0("/srv/www/rgan/smoke_forecaster")
+home_path <- paste0(getwd(), "/")
+
+# RG 2018-08-16: Defining local home directory
 home_path <- paste0(getwd(), "/")
 
 # download bluesky daily output -----------------------------------------------
@@ -228,7 +232,7 @@ todays_day_numeric <- as.numeric(format(Sys.Date(), "%d"))
 # NOTE:
 # smoke_brick typed to the console will reveal that the diemsnions are:
 # "201, 481, 96681, 192  (nrow, ncol, ncell, nlayers)". Default rasterstack 
-# havaior is to perform math and index over nlayers, in this case that is time. 
+# behavaior is to perform math and index over nlayers, in this case that is time. 
 
 # Create raster layer of same day mean value and take the mean of those (hourly)
 # values for the selected date. 
@@ -257,12 +261,36 @@ save(date_labels, file = paste0(home_path,"/data/date_label.RData"))
 # TODO: update to include more days
 smoke_stack <- brick(same_day_mean_smk, next_day_mean_smk)
 
+# RG 2018-08-16: Comment to Steve; Bonne and Jeff were really only confident in 
+# model skill/accuracy on the same day and next day.  
+
+# RG 2018-08-16: Steve, moved this up from below to regrid smoke stack
+population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
+# Old grid was on a east-west 468 to south_north 201 dimension grid
+# Defining app grid extent based on min and max lat/lon values
+app_extent <- extent(min(population_grid[,1]), max(population_grid[,1]),
+                     min(population_grid[,2]), max(population_grid[,2]))
+
+# Application coordinates
+app_coords <- as.matrix(population_grid[,1:2])
+
+# Creating empty raster based on dimension of application grid
+app_r <- raster(app_extent, nrow=201, ncol=468)
+# Applying wgs84 crs from smoke stack to empty raster
+crs(app_r) <- crs(smoke_stack)
+
+# Binlinear interpolation of bluesky smoke stack to match lat/lon coords of
+# application grid
+smoke_stack_app <- resample(smoke_stack, app_r, method = 'bilinear')
+
+
 # Create pm matrix of same-day and next-day values. 
 # This will be used later for population-weighting.
 # TODO: add more forecast days of smoke here too.... 
 # NOTE: pm_mat dimensions = [values(length of latxlon) X days forecast]
-pm_mat <- as.matrix(cbind(same_day_mean_smk@data@values, 
-                          next_day_mean_smk@data@values))
+# RG 2018-08-16: Steve, changing this to raster to points and only take the last
+# 2 elements which are the smoke same day and next day values; first 2 are lat/lon
+pm_mat <- rasterToPoints(smoke_stack_app)[,3:4]
 
 ################################################################################
 # convert smoke_stack to polygon/shape for displaying in the app and overlap
@@ -270,25 +298,31 @@ pm_mat <- as.matrix(cbind(same_day_mean_smk@data@values,
 ################################################################################
 print("-----------------------------------------------------------------------")
 print("converting smoke_stack to polygon....")
-smk_poly <- raster::rasterToPolygons(smoke_stack)
+smk_poly <- raster::rasterToPolygons(smoke_stack_app)
+
+# TODO: Review if this chunk of code needs to be run each time -----------------
+# RG 2018-08-16: Steve, is the following section new? I think with the regrid
+# approach, we don't need to recalculate proportion intersect. I'm going to
+# comment it out
 
 # saving bluesky grid shapefile. We need to know the bluesky grid for overlay
 # calculations related to the health impact assessment. The grid for a given day
 # from a single forecast (common root nc file) should be the same, so save a 
 # single instance of this grid [,1]. 
-smk_grid <- smk_poly[, 1]
-
-# write smoke grid that doesn't have values, overwrite the existing layer.
-writeOGR(obj = smk_grid, 
-         dsn = "./data/bluesky_grid", 
-         layer = "bluesky_grid",
-         overwrite_layer=TRUE,
-         driver = "ESRI Shapefile")
+# smk_grid <- smk_poly[, 1]
+# 
+# # write smoke grid that doesn't have values, overwrite the existing layer.
+# writeOGR(obj = smk_grid, 
+#          dsn = "./data/bluesky_grid", 
+#          layer = "bluesky_grid",
+#          overwrite_layer=TRUE,
+#          driver = "ESRI Shapefile")
+# End Review -------------------------------------------------------------------
 
 # Subset smk_polygon to only those with values > 0. Previously this subset
 # by those that were creater than 5 ugm3. This made for a confusing display where 
 # there were HIA where there were no smoke. This was done to reduce file size. 
-smk_poly_display <- smk_poly[smk_poly$layer.1 > 0 | smk_poly$layer.2 > 0, ]
+smk_poly_display <- smk_poly[smk_poly$layer.1 > 5 | smk_poly$layer.2 > 5, ]
 
 # remove raster files to save memory
 rm(smoke_brick, 
@@ -303,9 +337,8 @@ writeOGR(obj = smk_poly_display,
          driver = "ESRI Shapefile", 
          overwrite_layer = T)
 
-# remove smk poly to save memory
+# remove smk poly to save space
 rm(smk_poly)
-
 
 ################################################################################
 # Use newly saved PM grid to create bluesky_county_prop_intersect.csv
@@ -340,12 +373,16 @@ rm(grid_county_pi)
 
 # Get the population density value vector. 
 # This csv was created by bluesky_grid_population_vector.R 
-population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
+# RG 2018-08-16: Steve, I'm moving this up to grab the lat/lons of this grid
+# so I can regrid the new bluesky grid to our older grid; I also modified a couple
+# lines of code in the bluesky_grid_population_vector to keep the lat/lons
+# population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
 
-# Get vector of population density
+# Get vector of population density out of the population grid used above to 
+# regrid the new bluesky grid to our old grid
 popden <- population_grid$popden 
 
-# mMultiply population vector by pm vector. These share a common dimension of
+# Multiply population vector by pm vector. These share a common dimension of
 # county? 
 # NOTE: This is the line that has been killing the app lately. 
 # Dimensions: popden[? X ?] * pm_mat[bluesky grid index X forecast day]
@@ -424,8 +461,8 @@ us_shape$FIPS <- us_shape$GEOID
 us_shape <- sp::merge(us_shape, hia_est, by = "FIPS")
 
 # subset to counties with hia estimates of at least 1
-us_shape <- us_shape[us_shape$same_day_resp_ed > 1 | 
-                       us_shape$next_day_resp_ed > 1, ]
+us_shape <- us_shape[(us_shape$same_day_pm > 5 & us_shape$same_day_resp_ed > 1) | 
+                     (us_shape$next_day_pm > 5 & us_shape$next_day_resp_ed > 1), ]
 
 # rename truncated variable names; renamed hia estimates to layer_1 and layer_2
 # to match gridded bluesky forecasts of smoke labels
