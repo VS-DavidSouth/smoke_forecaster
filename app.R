@@ -103,8 +103,8 @@ date_labels[2] <- paste(date_labels[2], "(tomorrow)")
 date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
-# read in fire locations ----
-fire_locations <- read.csv("./data/fire_locations.csv")
+# read in fire_locations ----
+load("./data/fire_locations.RData")
 
 # TODO: Current conditions
 
