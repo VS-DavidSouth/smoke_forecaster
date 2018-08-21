@@ -332,27 +332,34 @@ smk_poly <- raster::rasterToPolygons(smoke_stack_app)
 
 # Subset smk_polygon to only those with values > PMThresh. Make two different
 # files for the two forecast days. 
-smk_poly_display_1 <- smk_poly["layer.1"][smk_poly@data$layer.1 >= PMThresh,]
-smk_poly_display_2 <- smk_poly["layer.2"][smk_poly@data$layer.2 >= PMThresh,]
+smk_forecast_1 <- smk_poly["layer.1"][smk_poly@data$layer.1 >= PMThresh,]
+smk_forecast_2 <- smk_poly["layer.2"][smk_poly@data$layer.2 >= PMThresh,]
 
-# remove raster files to save memory
-rm(smoke_brick, 
-   same_day_mean_smk, 
-   next_day_mean_smk, 
-   smoke_stack)
+# # remove raster files to save memory
+# rm(smoke_brick, 
+#    same_day_mean_smk, 
+#    next_day_mean_smk, 
+#    smoke_stack)
 
-# Write gridded smoke polygon 
-writeOGR(obj = smk_poly_display_1, 
+# Write gridded smoke polygon for day 1
+writeOGR(obj = smk_forecast_1, 
          dsn = paste0(home_path,"/data/smk_poly"), 
          layer = "smk_poly_1", 
          driver = "ESRI Shapefile", 
          overwrite_layer = T)
 
-writeOGR(obj = smk_poly_display_2, 
+# Save as RData to be loaded by the app
+save(smk_forecast_1, file=paste0(home_path, "/data/smk_poly/smk_forecast_1.RData"))
+
+# Write gridded smoke polygon for day 2
+writeOGR(obj = smk_forecast_2, 
          dsn = paste0(home_path,"/data/smk_poly"), 
          layer = "smk_poly_2", 
          driver = "ESRI Shapefile", 
          overwrite_layer = T)
+
+# Save as RData to be loaded by the app
+save(smk_forecast_2, file=paste0(home_path,"/data/smk_poly/smk_forecast_2.RData"))
 
 # remove smk poly to save space
 rm(smk_poly)
