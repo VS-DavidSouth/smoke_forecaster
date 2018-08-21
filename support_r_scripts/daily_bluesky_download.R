@@ -24,15 +24,16 @@ library(data.table) # will interfere with lubridate so use libridate::FUNCTION
 
 # TODO: consider these as possible user arguments 
 # RG 2018-08-16: Ask Steve to explain his thought here
+# SB 2018-08-21: I think we may use different models output in the future. 
 model <- "GFS-0.15deg"
 setwd("/srv/www/rgan/smoke_forecaster")
 
 # define path to repository for the server for writing files
 home_path <- paste0("/srv/www/rgan/smoke_forecaster")
-home_path <- paste0(getwd(), "/")
+#home_path <- paste0(getwd(), "/")
 
 # RG 2018-08-16: Defining local home directory
-home_path <- paste0(getwd(), "/")
+#home_path <- paste0(getwd(), "/")
 
 # download bluesky daily output -----------------------------------------------
 
@@ -48,22 +49,31 @@ todays_date <- paste0(gsub("-","", Sys.Date()))
 url_base <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/", model,"/")
 todays_dir <- paste0(url_base, todays_date)
 
+# Save the used forecast data and hour
+forecast_date <- todays_date
+forecast_hour <- "0"
+
 # Check to see if todays date 12Z forecast exists. 
 if ( url.exists( paste0(todays_dir,"12/combined") ) ){
   
   print("12Z forecast latest available, being used")
   forecast_url <- paste0(todays_dir,"12/combined")
+  forecast_hour <- "12"
   
 } else if( url.exists( paste0(todays_dir,"00/combined") ) ){
   
   print("00Z forecast latest available, being used")
   forecast_url <- paste0(todays_dir,"00/combined")
+  forecast_hour <- "00"
   
 } else {
   
   # No grids for todays data available yet. Try yesterday.
-  yesterday <- Sys.Date()-1
-  forecast_url <- paste0(url_base, gsub("-","", yesterday), "12/combined")
+  yesterday <- gsub("-","", Sys.Date()-1)
+  forecast_url <- paste0(url_base, yesterday, "12/combined")
+  
+  forecast_date <- gsub("-","", yesterday)
+  forecast_hour <- "12"
   
 }
 
@@ -77,13 +87,15 @@ online_data_path <- paste0(forecast_url, "/data/")
 # it tries to do it. 
 download_log <- file("bluesky_download_log.txt")
 line1 <- paste("Download log for:", Sys.time())
+line2 <- paste("Forecast Date:", forecast_date)  
+line3 <- paste("Forecast Hour:", forecast_hour)
 
 # file specific urls
 fire_locations_url <- paste0(online_data_path, "fire_locations.csv")
 smoke_dispersion_url <- paste0(online_data_path, "smoke_dispersion.nc")
 
-line2 <- paste("fire locations file: ", fire_locations_url)
-line3 <- paste("smoke dispersion file: ", smoke_dispersion_url)
+line4 <- paste("fire locations file: ", fire_locations_url)
+line5 <- paste("smoke dispersion file: ", smoke_dispersion_url)
 
 # Get fire locations ----
 try_locations <- try(download.file(url = fire_locations_url,
@@ -99,13 +111,13 @@ try_smoke <- try(download.file(url = smoke_dispersion_url,
 
 # Check to see if there was an error in either. 
 if(class(try_locations) == "try-error" | class(try_smoke) == "try-error"){
-  line4 <- paste("THERE WAS A DOWNLOAD ERROR")
+  line6 <- paste("THERE WAS A DOWNLOAD ERROR")
 } else{
-  line4 <- paste("Both fire locations and smoke dispersion downloaded.")
+  line6 <- paste("Both fire locations and smoke dispersion downloaded.")
 }
 
-line5 <- paste("Time complete:",Sys.time())
-writeLines(c(line1, line2, line3, line4, line5), con=download_log)
+line7 <- paste("Time complete:",Sys.time())
+writeLines(c(line1, line2, line3, line4, line5, line6, line7), con=download_log)
 close(download_log) 
 
 ################################################################################
@@ -113,7 +125,7 @@ close(download_log)
 ################################################################################
 # TODO: Create a new log that documents the processing of these nc data. 
 
-fileName <- paste0(home_path,"data/smoke_dispersion.nc")
+fileName <- paste0(home_path, "data/smoke_dispersion.nc")
 
 # This function loads the most recently downloaded smoke dispersion .nc file
 # and uses the global attributes within that file to create a version of the file
