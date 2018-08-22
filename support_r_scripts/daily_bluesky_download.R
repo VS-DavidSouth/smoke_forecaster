@@ -5,6 +5,8 @@ if(length(args)>0){
 }else{
   machine_name <- "local"
 }
+print(paste("Passed arguments:"))
+print(args)
 # ------------------------------------------------------------------------------
 # Title: Daily BlueSky forecast download and data management
 # Authors: Ryan Gan & Steven Brey 
@@ -36,9 +38,15 @@ model <- "GFS-0.15deg"
 PMThresh <- 2
 
 if(machine_name == "salix"){
+  
+  print("-----------------------------------------------")
+  print("Code running on salix")
   setwd("/srv/www/rgan/smoke_forecaster/")
   # define path to repository for the server for writing files
   home_path <- paste0("/srv/www/rgan/smoke_forecaster/")
+  print(paste("Working directory set to:", home_path))
+  print("-----------------------------------------------")
+  
 }else{
   # Local development taking place. 
   home_path <- paste0(getwd(), "/")
@@ -111,6 +119,7 @@ try_locations <- try(download.file(url = fire_locations_url,
                                    destfile = paste0(home_path, "data/fire_locations.csv"), 
                                    mode = "wb")
                      )
+print("Fire Locations csv downloaded.")
 
 # Re-save this as an Rdataframe with subset rows so that the app runs faster
 fire_locations <- read.csv("./data/fire_locations.csv")
