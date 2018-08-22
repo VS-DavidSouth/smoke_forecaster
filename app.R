@@ -16,7 +16,7 @@ library(leaflet)
 library(rgdal) # for read shapefile
 library(stringr)
 
-# Get information on when smoke data were last downloaded
+# Get information on when smoke data were last downloaded. This code is ugly as sin. 
 forecast_date <- stringr::str_sub(readLines("bluesky_download_log.txt")[2], 16, 23)
 forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 17)
 
@@ -52,6 +52,9 @@ hia_layer <- "hia_poly"
 # hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
+# Current smoke conditions
+latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke")
+
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
 
@@ -81,12 +84,6 @@ asthma_bin <- round(exp((bin/10)*0.0733), 2)
 asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
                        bins = asthma_bin, na.color = "transparent")
 
-# ER pal 
-# ER_min <- 1
-# ER_max <- 100#max(c(county_hia@data$layer_1, county_hia@data$layer_1))
-# ER_bin <- c(1,20,40,60,80,100)
-# ER_pal <- colorBin(c("blue", "orange"), domain = c(1,max(ER_bin)), 
-#                    bins = ER_bin, na.color = "red")
 ################################################################################
 
 # define color bin for hia estimates
@@ -99,9 +96,6 @@ hia_pal <- colorBin(c("blue", "orange"),
                     domain = c(1, max(hia_bin)),
                     bins = hia_bin, 
                     na.color="transparent")
-
-# Note 2017-12-29: Think about the best way to represent the scales;
-# it may be okay to redefine them every day
 
 # read in saved R dates ----
 load("./data/date_label.RData")
@@ -253,6 +247,7 @@ server <- (function(input, output){
     # call proxy map
     leafletProxy(mapId="map") %>%
       clearShapes() %>% 
+      
       # set a box that defines the dimensions of bluesky forecast
       addRectangles(lng1=-130.0,
                     lng2= -59.95, 
@@ -260,7 +255,8 @@ server <- (function(input, output){
                     lat2=52.5,
                     fillColor = "transparent", 
                     color = "black", 
-                    weight = 2) %>%
+                    weight = 2,
+                    group = "Forecasted Smoke") %>%
       
       # add smoke polygons 
       addPolygons(data = smk_forecast_display, 
@@ -306,6 +302,15 @@ server <- (function(input, output){
                                               textsize = "12px", 
                                               direction = "auto")
       )  %>% 
+      # TODO: Give these a colorbar! Make different concentrations different
+      # TODO: colors! 
+      # TODO: Do not allow this to display when the date is set for tomorrow. 
+      addPolygons(data=latest_smoke,
+                  group="Current Conditions",
+                  popup=paste("Valid:", latest_smoke$Start, "-",latest_smoke$End,
+                              "Density:", latest_smoke$Density),
+                  color=latest_smoke$Density
+      ) %>%
       
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
@@ -319,12 +324,15 @@ server <- (function(input, output){
       
       # add layer control
       addLayersControl(
-        overlayGroups = c("Forecasted Smoke", "HIA", "Fire Locations"),
+        overlayGroups = c("Forecasted Smoke", 
+                          "HIA", 
+                          "Fire Locations", 
+                          "Current Conditions"),
         options = layersControlOptions(collapsed = F)
       ) %>%
       
       # Set defualt hidden groups 
-      hideGroup(group=c("HIA"))
+      hideGroup(group=c("HIA","Current Conditions"))
     
     
   }) # end reactive layer
