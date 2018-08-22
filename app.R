@@ -58,7 +58,7 @@ county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 # define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
 bin <- c(2, 10, 20, 30, 40, 50, 100, 250, 1000)
-pal <- colorBin(c("gray", "red", "purple"), 
+pal <- colorBin(palette=c("gray", "red", "purple"), 
                 domain = c(0,1000), 
                 bins = bin,
                 na.color = "black") # "#F0F2F0", "#000c40"
@@ -69,8 +69,10 @@ pal <- colorBin(c("gray", "red", "purple"),
 resp_bin <- round(exp((bin/10)*0.0507), 2)
 
 # resp pal
-resp_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(resp_bin)), 
-                     bins = resp_bin, na.color = "red") # "transparent" to hide, if desired
+resp_pal <- colorBin(c("#F0F2F0", "#000c40"), 
+                     domain = c(1,max(resp_bin)), 
+                     bins = resp_bin, 
+                     na.color = "red") # "transparent" to hide, if desired
 # asthma
 asthma_bin <- round(exp((bin/10)*0.0733), 2)
 
@@ -128,7 +130,7 @@ head <- dashboardHeader(
 side <- dashboardSidebar(
   # reactive sidebar
   selectInput(inputId="date_smoke", 
-              label = h3("Date to forecast"),
+              label = h3("Date to forecast:"),
               choices = date_list, 
               selected = "layer_1"),
   
@@ -183,7 +185,6 @@ server <- (function(input, output){
         )
       ) %>%
       
-      
       # add legend for smoke values
       addLegend(pal=pal, 
                 values=c(0, 1000),
@@ -193,7 +194,7 @@ server <- (function(input, output){
     
       addLegend(pal=hia_pal,
                 values=hia_bin,
-                title = htmltools::HTML("<strong>ER Visits</strong>"),
+                title = htmltools::HTML("<strong>Emergency Dept. Visits</strong>"),
                 position = "bottomleft",
                 group="HIA")
 
