@@ -24,11 +24,11 @@ forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 
 polyOpacity <- 0.7
 polyBorderOpacity <- 1
 
-fireIcons <- icons(
-  iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
-  iconWidth = 17, 
-  iconHeight = 17
-)
+# fireIcons <- icons(
+#   iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
+#   iconWidth = 17, 
+#   iconHeight = 17
+# )
 
 pal_fire <- colorFactor(
   palette = c("red", "green"),
@@ -305,12 +305,15 @@ server <- (function(input, output){
       # TODO: Give these a colorbar! Make different concentrations different
       # TODO: colors! 
       # TODO: Do not allow this to display when the date is set for tomorrow. 
-      addPolygons(data=latest_smoke,
-                  group="Current Conditions",
-                  popup=paste("Valid:", latest_smoke$Start, "-",latest_smoke$End,
-                              "Density:", latest_smoke$Density),
-                  color=latest_smoke$Density
+      addPolygons(data = latest_smoke,
+                  group = "Analysed Plumes",
+                  popup = paste("<b>Satellite:</b>", latest_smoke$Satellite,
+                                "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
+                                "<br><b>Detials:</b> www.ospo.noaa.gov/Products/land/hms.html"),
+                  color = pal(latest_smoke$Density),
+                  label = "Smoke plume drawn by HMS analyst"
       ) %>%
+      ##"<b>Valid:</b>", latest_smoke$Start, "-",latest_smoke$End,
       
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
@@ -327,12 +330,12 @@ server <- (function(input, output){
         overlayGroups = c("Forecasted Smoke", 
                           "HIA", 
                           "Fire Locations", 
-                          "Current Conditions"),
+                          "Analysed Plumes"),
         options = layersControlOptions(collapsed = F)
       ) %>%
       
       # Set defualt hidden groups 
-      hideGroup(group=c("HIA","Current Conditions"))
+      hideGroup(group=c("HIA","Analysed Plumes"))
     
     
   }) # end reactive layer
