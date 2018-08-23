@@ -119,10 +119,21 @@ try_locations <- try(download.file(url = fire_locations_url,
                                    destfile = paste0(home_path, "data/fire_locations.csv"), 
                                    mode = "wb")
                      )
-print("Fire Locations csv downloaded.")
+
+if(class(try_locations) == "try-error"){
+  stop("There was an error downloading fire_locations.csv")
+}else{
+  print("fire_locations.csv downloaded.")
+}
 
 # Re-save this as an Rdataframe with subset rows so that the app runs faster
-fire_locations <- read.csv("./data/fire_locations.csv")
+load_try <- try(fire_locations <- read.csv("./data/fire_locations.csv"), silent=T)
+if(class(load_try)=="try-error"){
+  stop("The fire_locations.csv contain no data. Halting download script.")
+} else{
+  print("fire_locations.csv contain data.")
+}
+
 column_mask <- names(fire_locations) %in% c("latitude", "longitude", "type", "area")
 fire_locations <- fire_locations[,column_mask]
 save(fire_locations, file="data/fire_locations.RData")
