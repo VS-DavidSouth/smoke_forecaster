@@ -53,7 +53,7 @@ hia_layer <- "hia_poly"
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke")
+latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display")
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
@@ -307,13 +307,14 @@ server <- (function(input, output){
       # TODO: Do not allow this to display when the date is set for tomorrow. 
       addPolygons(data = latest_smoke,
                   group = "Analysed Plumes",
-                  popup = paste("<b>Satellite:</b>", latest_smoke$Satellite,
+                  popup = paste("<b>Analysed:</b>", latest_smoke$Start, "Z",
+                                "<br><b>Satellite:</b>", latest_smoke$Satellite,
                                 "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
                                 "<br><b>Detials:</b> www.ospo.noaa.gov/Products/land/hms.html"),
                   color = pal(latest_smoke$Density),
                   label = "Smoke plume drawn by HMS analyst"
       ) %>%
-      ##"<b>Valid:</b>", latest_smoke$Start, "-",latest_smoke$End,
+      
       
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
