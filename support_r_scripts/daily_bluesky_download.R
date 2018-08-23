@@ -527,3 +527,5 @@ colnames(us_shape@data) <- c_names
 # save shape with hia estimates
 writeOGR(obj = us_shape, dsn = paste0(home_path,"/data/hia_poly"), 
          layer = "hia_poly", driver = "ESRI Shapefile", overwrite_layer = T)
+
+print("Script executed without error.")
