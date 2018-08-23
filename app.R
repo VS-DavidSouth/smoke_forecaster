@@ -19,6 +19,7 @@ library(stringr)
 # Get information on when smoke data were last downloaded. This code is ugly as sin. 
 forecast_date <- stringr::str_sub(readLines("bluesky_download_log.txt")[2], 16, 23)
 forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 17)
+forecast_url <- readLines("bluesky_download_log.txt")[5]
 
 # Polygon color options 
 polyOpacity <- 0.7
@@ -122,6 +123,7 @@ head <- dashboardHeader(
 
 # side bar
 side <- dashboardSidebar(
+  
   # reactive sidebar
   selectInput(inputId="date_smoke", 
               label = h3("Date to forecast:"),
@@ -131,9 +133,11 @@ side <- dashboardSidebar(
   # Show the forecast hour for the smoke data being displayed
   fluidRow(
     column(align="center", width=12,
-           p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
+           #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
+           p(tags$a(href = forecast_url, 
+                    paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
+           )
     )
-  )
 ) # end side bar
 
 
