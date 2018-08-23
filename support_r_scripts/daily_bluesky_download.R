@@ -7,6 +7,7 @@ if(length(args)>0){
 }
 print(paste("Passed arguments:"))
 print(args)
+
 # ------------------------------------------------------------------------------
 # Title: Daily BlueSky forecast download and data management
 # Authors: Ryan Gan & Steven Brey 
@@ -23,7 +24,7 @@ print(args)
 # http://mazamascience.com/Classes/PWFSL_2014/Lesson_07_BlueSky_FirstSteps.html#downloadbsoutput\
 
 # libraries needed
-library(ncdf4) # netcdf files
+library(ncdf4) 
 library(stringr)
 library(raster) # easier to manipulate than netcdf file
 library(rgdal)
@@ -54,51 +55,96 @@ if(machine_name == "salix"){
 
 # download bluesky daily output -----------------------------------------------
 
-# date is needed for download; taking out "-" separator. 00Z and 12Z forecasts
-# will be aquiured, whatever is newest. 
-todays_date <- paste0(gsub("-","", Sys.Date()))
-
 # download fire locations from bluesky runs ----
 # note right now I download only the location file, but I may work in
 # fire information in the future. looks like it's contained in the json file
 # Note: changed "forecast" to "combined" estimate on Sept 5 2017
-
 url_base <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/", model,"/")
-todays_dir <- paste0(url_base, todays_date)
-
-# Save the used forecast data and hour
-forecast_date <- todays_date
-forecast_hour <- "0"
 
 # Check to see if todays date 12Z forecast exists. 
-if ( url.exists( paste0(todays_dir,"12/combined") ) ){
+# TODO: These if statements need to be a while loop that goes back in time 
+# TODO: until the condition is satisfied. 
+check_for_files <- function(URL){
   
-  print("12Z forecast latest available, being used")
-  forecast_url <- paste0(todays_dir,"12/combined")
-  forecast_hour <- "12"
+  fire_locations_test <- FALSE
+  smoke_dispersion_test <- FALSE
   
-} else if( url.exists( paste0(todays_dir,"00/combined") ) ){
+  # See if fire_locations.csv exists, if it does, download and check for size.
+  fire_locations_file <- paste0(URL, "/fire_locations.csv")
+  if(url.exists(fire_locations_file)){
+    
+    fire_locations_dest <- paste0(home_path, "data/fire_locations_test.csv")
+    download.file(url = fire_locations_file,
+                  destfile = fire_locations_dest, 
+                  mode = "wb")
+    
+    # Now check the size of the downloaded file
+    if (file.info(fire_locations_dest)$size > 2){
+      fire_locations_test <- TRUE
+    }
+  }
   
-  print("00Z forecast latest available, being used")
-  forecast_url <- paste0(todays_dir,"00/combined")
-  forecast_hour <- "00"
+  # See if smoke_dispersion.nc exists, if it does, download and check for size.
+  smoke_dispersion_file <- paste0(URL, "/smoke_dispersion.nc")
+  if(url.exists(smoke_dispersion_file)){
+    
+    smoke_dispersion_dest <- paste0(home_path, "data/smoke_dispersion_test.nc")
+    download.file(url = smoke_dispersion_file,
+                  destfile = smoke_dispersion_dest, 
+                  mode = "wb")
+    
+    # Now check the size of the downloaded file
+    if (file.info(smoke_dispersion_dest)$size > 2){
+      smoke_dispersion_test <- TRUE
+    }
+  }
   
-} else {
+  # Every condition needs to be true in order to use data from this model run  
+  combined_check <- c(fire_locations_test, smoke_dispersion_test)
   
-  # No grids for todays data available yet. Try yesterday.
-  yesterday <- gsub("-","", Sys.Date()-1)
-  forecast_url <- paste0(url_base, yesterday, "12/combined")
-  
-  forecast_date <- gsub("-","", yesterday)
-  forecast_hour <- "12"
+  if(all(combined_check)){
+    
+    result <- TRUE
+    # When we have both, rename these files, get rid of appended "test" at 
+    # end of name
+    file.rename(fire_locations_dest, paste0(home_path, "data/fire_locations.csv"))
+    file.rename(smoke_dispersion_dest, paste0(home_path, "data/smoke_dispersion_test.nc"))
+    
+  } else{
+    result <- FALSE
+  }
+  return(result)
   
 }
 
-# TODO: See if this file already exists!!!! If it does, halt this script here
-# TODO: and do nothing until the file is new! 
-
-# Create path to online data directory for last available model run
-online_data_path <- paste0(forecast_url, "/data/")
+dataSearch <- TRUE # while this is T, search for data 
+loopCount  <- 0
+date_to_check <- paste0(gsub("-","", Sys.Date())) # Start with today
+while(dataSearch){
+  
+  print(paste("Searching for data on:", date_to_check))
+  
+  # Search for 12Z forecast for this date
+  URL <- paste0(url_base, date_to_check, "12/combined/data")
+  dataSearch <- !check_for_files(URL)
+  forecast_hour <- "12"
+  
+  # If no 12Z forecast available for this date, check for 00Z forecast instead
+  if(dataSearch){
+    URL <- paste0(url_base, date_to_check, "00/combined/data")
+    dataSearch <- !check_for_files(URL)
+    forecast_hour <- "00"
+  }
+  # Store for the user, in case this is the last time through the loop 
+  forecast_date <- date_to_check
+  
+  # Go back a day in the POSIXct space
+  loopCount <- loopCount + 1
+  date_to_check <- paste0(gsub("-","", Sys.Date()-loopCount))
+  
+}
+ 
+print(paste("Fire and smoke data aquired for:", forecast_date, forecast_hour))
 
 # Create a file connection that will log what this script tries to do and when
 # it tries to do it. 
@@ -106,25 +152,6 @@ download_log <- file("bluesky_download_log.txt")
 line1 <- paste("Download log for:", Sys.time())
 line2 <- paste("Forecast Date:", forecast_date)  
 line3 <- paste("Forecast Hour:", forecast_hour)
-
-# file specific urls
-fire_locations_url <- paste0(online_data_path, "fire_locations.csv")
-smoke_dispersion_url <- paste0(online_data_path, "smoke_dispersion.nc")
-
-line4 <- paste("fire locations file: ", fire_locations_url)
-line5 <- paste("smoke dispersion file: ", smoke_dispersion_url)
-
-# Get fire locations ----
-try_locations <- try(download.file(url = fire_locations_url,
-                                   destfile = paste0(home_path, "data/fire_locations.csv"), 
-                                   mode = "wb")
-                     )
-
-if(class(try_locations) == "try-error"){
-  stop("There was an error downloading fire_locations.csv")
-}else{
-  print("fire_locations.csv downloaded.")
-}
 
 # Re-save this as an Rdataframe with subset rows so that the app runs faster
 load_try <- try(fire_locations <- read.csv("./data/fire_locations.csv"), silent=T)
@@ -134,25 +161,15 @@ if(class(load_try)=="try-error"){
   print("fire_locations.csv contain data.")
 }
 
+# We do not want or need most rows of fire_locations
 column_mask <- names(fire_locations) %in% c("latitude", "longitude", "type", "area")
 fire_locations <- fire_locations[,column_mask]
 save(fire_locations, file="data/fire_locations.RData")
 
-# Get smoke dispersion output ----
-try_smoke <- try(download.file(url = smoke_dispersion_url, 
-                               destfile = paste0(home_path, "data/smoke_dispersion.nc"), 
-                               mode = "wb")
-                 )
-
-# Check to see if there was an error in either. 
-if(class(try_locations) == "try-error" | class(try_smoke) == "try-error"){
-  line6 <- paste("THERE WAS A DOWNLOAD ERROR")
-} else{
-  line6 <- paste("Both fire locations and smoke dispersion downloaded.")
-}
-
-line7 <- paste("Time complete:",Sys.time())
-writeLines(c(line1, line2, line3, line4, line5, line6, line7), con=download_log)
+line4 <- paste("Both fire locations and smoke dispersion downloaded from")
+line5 <- paste(URL)
+line6 <- paste("Time complete:",Sys.time())
+writeLines(c(line1, line2, line3, line4, line5, line6), con=download_log)
 close(download_log) 
 
 ################################################################################
