@@ -235,19 +235,7 @@ server <- (function(input, output){
     hia_vals <- reactive({getElement(county_hia@data, layer_name)})
     hia_county_name <- reactive({getElement(county_hia@data, "NAME")}, quoted=T)
     hia_county_pop <- reactive({getElement(county_hia@data, "Pop")})
-    
-    hia_label <- sprintf(paste0(
-      "<strong>Estimated Respiratory Emergency Department Visits: %g </strong>",
-      #"<br> County Name: %g",
-      "<br> County Population: %g"), 
-      # number for smoke ED visits
-      hia_vals(),
-      # # County Name
-      # hia_county_name(),
-      # number for relative risk asthma
-      hia_county_pop())%>% 
-      lapply(htmltools::HTML)
-    
+  
     # call proxy map
     leafletProxy(mapId="map") %>%
       clearShapes() %>% 
@@ -296,14 +284,13 @@ server <- (function(input, output){
                                                color = "red", 
                                                bringToFront = T, 
                                                fillOpacity = polyBorderOpacity),
-                  # add hia resp est values
-                  label = hia_label,
-                  # label=paste0(county_hia@data$NAME, " county ",
-                  #              "(population ", county_hia@data$Pop,"), ",
-                  #              "Emergency Department vists: ", hia_vals()),
-                  labelOptions = labelOptions(style = list("font-weight" = "normal", 
-                                                           padding = "3px 8px"), 
-                                              textsize = "12px", 
+                  popup=paste("<strong>County:</strong>", hia_county_name(),
+                              "<br><strong>Population:</strong>", hia_county_pop(),
+                              "<br><strong>Emergency Department vists:</strong>", hia_vals()),
+                  label=paste("Click for", hia_county_name()," county HIA"),
+                  labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                           padding = "3px 8px"),
+                                              textsize = "12px",
                                               direction = "auto")
       )  %>% 
       # TODO: Give these a colorbar! Make different concentrations different
@@ -311,7 +298,7 @@ server <- (function(input, output){
       # TODO: Do not allow this to display when the date is set for tomorrow. 
       addPolygons(data = latest_smoke,
                   group = "Analysed Plumes",
-                  popup = paste("<b>Analysed:</b>", latest_smoke$Start, "Z",
+                  popup = paste("<b>Analysed:</b>", latest_smoke$X1,
                                 "<br><b>Satellite:</b>", latest_smoke$Satellite,
                                 "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
                                 "<br><b>Detials:</b> www.ospo.noaa.gov/Products/land/hms.html"),
