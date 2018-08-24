@@ -15,6 +15,7 @@ if(length(args)>0){
 # the latest file is not used, and instead, the older polygons are retained. 
 
 library(rgdal)
+library(stringr)
 
 if(machine_name == "salix"){
   
@@ -56,10 +57,20 @@ if(class(try_error) == "try-error"){
   
   print("Features in the latest smoke file. Updating the existing.")
   
+  startString <- as.character(latest_smoke$Start)
+  gap <- str_locate(startString, " ")
+  len <- str_length(startString)
+  YEARJDAY <- str_sub(startString, 1, gap[1])
+  HOUR <- str_sub(startString, gap[,1]+1, len)
+  DATE <- as.character(as.POSIXct(YEARJDAY, format = "%Y%d"))
+  
+  # Save the easier to read formatted date information in the dataframe
+  latest_smoke$X1 <- paste0(DATE, " ", HOUR, "Z")
+  
   # # Format the annoying time format YYYDD HH
   # latest_smoke$Start <- as.POSIXct(latest_smoke$Start, format = "%Y%d %H", tz="UTC")
   # latest_smoke$End <- as.POSIXct(latest_smoke$End, format = "%Y%d %H", tz="UTC")
-  
+
   # rewrite the file
   rgdal::writeOGR(obj = latest_smoke, 
                   dsn = paste0(home_path,"data/HMS"), 
