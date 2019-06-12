@@ -114,9 +114,9 @@ load("./data/fire_locations.RData")
 
 # shiny dash board ui ----
 head <- dashboardHeader(
-  tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/blob/development/README.md", "About")),
+  tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:sjbrey@rams.colostate.edu", "Contact us")),
-  tags$li(class = "dropdown", tags$a(href = "https://github.com/RyanGan/smoke_forecaster/issues", "Report Bug")),
+  tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/issues", "Report Bug")),
   title = "Smoke Health Impact Assessment (HIA) Forecaster (beta)",
   titleWidth = 550
 )
@@ -168,7 +168,7 @@ server <- (function(input, output){
       # set bounds of map
       fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
       
-      # This buttom allows the user to find thier location. 
+      # This buttom allows the user to find their location. 
       # TODO: Fix, it does not appear to always work. Security issue? 
       addEasyButton(
         easyButton(
@@ -297,8 +297,8 @@ server <- (function(input, output){
       # TODO: colors! 
       # TODO: Do not allow this to display when the date is set for tomorrow. 
       addPolygons(data = latest_smoke,
-                  group = "Analysed Plumes",
-                  popup = paste("<b>Analysed:</b>", latest_smoke$X1,
+                  group = "Analyzed Plumes",
+                  popup = paste("<b>Analyzed:</b>", latest_smoke$X1,
                                 "<br><b>Satellite:</b>", latest_smoke$Satellite,
                                 "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
                                 "<br><b>Detials:</b> www.ospo.noaa.gov/Products/land/hms.html"),
@@ -322,12 +322,12 @@ server <- (function(input, output){
         overlayGroups = c("Forecasted Smoke", 
                           "HIA", 
                           "Fire Locations", 
-                          "Analysed Plumes"),
+                          "Analyzed Plumes"),
         options = layersControlOptions(collapsed = F)
       ) %>%
       
-      # Set defualt hidden groups 
-      hideGroup(group=c("HIA","Analysed Plumes"))
+      # Set default hidden groups 
+      hideGroup(group=c("HIA","Analyzed Plumes"))
     
     
   }) # end reactive layer
