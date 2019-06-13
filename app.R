@@ -22,8 +22,8 @@ forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 
 forecast_url <- readLines("bluesky_download_log.txt")[5]
 
 # Polygon color options 
-polyOpacity <- 0.7
-polyBorderOpacity <- 1
+polyOpacity <- 0.5
+polyBorderOpacity <- .7
 
 # fireIcons <- icons(
 #   iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
@@ -115,7 +115,7 @@ load("./data/fire_locations.RData")
 # shiny dash board ui ----
 head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/blob/development/README.md", "About")),
-  tags$li(class = "dropdown", tags$a(href = "mailto:sjbrey@rams.colostate.edu", "Contact us")),
+  tags$li(class = "dropdown", tags$a(href = "mailto:Sheena.Martenies@colostate.edu", "Contact Us")),
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/issues", "Report Bug")),
   title = "Smoke Health Impact Assessment (HIA) Forecaster (beta)",
   titleWidth = 550
@@ -163,7 +163,8 @@ server <- (function(input, output){
     leaflet() %>% 
       
       # call map layer
-      addTiles() %>% 
+      #addTiles() %>%  # DS: original basemap
+      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%  # DS: dark grey basemap
       
       # set bounds of map
       fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
@@ -274,7 +275,7 @@ server <- (function(input, output){
       # http://rpubs.com/bhaskarvk/electoral-Map-2016
       addPolygons(data = county_hia, 
                   group = "HIA", 
-                  color = "transparent",
+                  color = "black",
                   fillColor = ~hia_pal(hia_vals()), 
                   weight=1, 
                   smoothFactor=1, 
