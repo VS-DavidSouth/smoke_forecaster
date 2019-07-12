@@ -3,13 +3,15 @@ Shiny app of maps for forecasts of smoke and health impacts.
 
 # THIS IS AN EARLY PROTOTYPE. USE AT YOUR OWN RISK.
 
+The frozen version of the site can be viewed here: http://rgan.atmos.colostate.edu/ 
+
 We welcome all feedback. 
 
 ### Overview of app functionality:
 
 This app uses BlueSky output from the continental US. This app builds on PM2.5 concentration estimates made by BlueSky and estimates health impact using what established relationships between air pollution particulate matter and health endpoints, in this case respiratory emergency room visits.
 
-BlueSky smoke forecast can be viewed here: https://tools.airfire.org/websky/v1/#status
+The source BlueSky smoke data can be viewed here: https://tools.airfire.org/websky/v1/#status
 
 Every day around 12 PM MST, a cron job initiates the daily bluesky_download R script. Sometimes, BlueSky is not done running it's daily estimates,  a simple if else that if the task fails to find new data, it will download yesterday's data (this may be replaced with a while loop to check for new data periodically, this app is still underdevelopment). We also average the same day daily estimates and tomorrow's forecasted estimate, starting at midnight EST (needs to be checked).
 
@@ -30,7 +32,7 @@ In order to plot the grid and counties on the leaflet map, only values in the sh
 
 4. hia_poly: Made from folder above. Created every day after county population weighted estimates are estimated. 
 
-5. us_census_county_population: Came from Census estimates. Contain populations for each county. I think I just used the population estimates in the HIA componenet.
+5. us_census_county_population: Came from Census estimates. Contain populations for each county. I think I just used the population estimates in the HIA component.
 
 6. 2015-bluesky_population: CSV file of population density estimates for each bluesky grid. Created using the regridded SEDAC 2015 population density estimates. I believe this file is used to estimate population-weighted pm2.5 each day.
 
