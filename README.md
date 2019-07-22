@@ -26,7 +26,7 @@ In order to plot the grid and counties on the leaflet map, only values in the sh
 ### Files you need to make this program run and what they do:
 1. bluesky_grid: Shapefile used to calculate the proportion intersect between bluesky grid and county shapefile. This file is also used to join smoke PM2.5, which I then limit to values > 5. I save this a new shapefile folder called smk_poly, and this is plotted in the leaflet map.
 
-2. smoke_poly: Made every day, subsetted shapefile form bluesky grid with smoke estimate values.
+2. smoke_poly: Made every day, subsetted shapefile from bluesky grid with smoke estimate values.
 
 3. cb_2016_us_count_500k: County shapefile used to calcualte proportion intersect and used to plot the county estimates of population weighted pm2.5 and excess ED visits on the leaflet map. I save joined HIA estimates to a new shape folder called hia_poly. Plotted in the same way as smk_poly.
 

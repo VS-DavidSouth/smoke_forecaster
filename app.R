@@ -9,6 +9,10 @@
 # version lighter as the server can't handle the raster brick. That code still
 # exists in the ui and server code.
 
+#### THIS VERSION IS MEANT ONLY FOR RUNNING THE SHINY APP ON A LOCAL COMPUTER.
+#### DELETE THESE LINES OF CODE AND SECTIONS THAT SAY "## uncommentthis later: "
+#### BEFORE RUNNING THIS ON THE SERVER. ALSO UNDO THE "## changed in local" changes.
+
 # load libraries ---------------------------------------------------------------
 library(shinydashboard)
 library(shiny)
@@ -17,9 +21,9 @@ library(rgdal) # for read shapefile
 library(stringr)
 
 # Get information on when smoke data were last downloaded. This code is ugly as sin. 
-forecast_date <- stringr::str_sub(readLines("bluesky_download_log.txt")[2], 16, 23)
-forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 17)
-forecast_url <- readLines("bluesky_download_log.txt")[5]
+## uncomment this later: forecast_date <- stringr::str_sub(readLines("bluesky_download_log.txt")[2], 16, 23)
+## uncomment this later: forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 17)
+## uncomment this later: forecast_url <- readLines("bluesky_download_log.txt")[5]
 
 # Polygon color options 
 polyOpacity <- 0.5
@@ -32,7 +36,7 @@ polyBorderOpacity <- .7
 # )
 
 pal_fire <- colorFactor(
-  palette = c("red", "green"),
+  palette = c("red", "orange"),
   levels = c("WF", "RX")
 )
 
@@ -40,7 +44,8 @@ pal_fire <- colorFactor(
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
-poly_path <- "./data/smk_poly"
+##poly_path <- "./data/smk_poly"
+poly_path <- "C:\Users\apddsouth\Documents\Smoke_Predictor\data\smk_poly" ## changed in local
 
 # # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
@@ -122,24 +127,26 @@ head <- dashboardHeader(
 )
 
 # side bar
-side <- dashboardSidebar(
-  
-  # reactive sidebar
-  selectInput(inputId="date_smoke", 
-              label = h3("Date to forecast:"),
-              choices = date_list, 
-              selected = "layer_1"),
-  
-  # Show the forecast hour for the smoke data being displayed
-  fluidRow(
-    column(align="center", width=12,
-           #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
-           p(tags$a(href = forecast_url, 
-                    paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
-           )
-    )
-) # end side bar
-
+## uncomment this later: CHANGE THE SECTION BELOW WHEN THIS GOES BACK TO SERVER
+if (1==2){
+  side <- dashboardSidebar(
+      
+      # reactive sidebar
+      selectInput(inputId="date_smoke", 
+                  label = h3("Date to forecast:"),
+                  choices = date_list, 
+                  selected = "layer_1"),
+      
+      # Show the forecast hour for the smoke data being displayed
+      fluidRow(
+        column(align="center", width=12,
+               #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
+               p(tags$a(href = forecast_url, 
+                        paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
+               )
+        )
+    ) # end side bar
+}
 
 # body
 body <- dashboardBody(
