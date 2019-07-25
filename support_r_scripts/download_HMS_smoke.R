@@ -1,11 +1,3 @@
-#!/usr/bin/env Rscript
-args = commandArgs(trailingOnly=TRUE)
-if(length(args)>0){
-  machine_name <- args[1]
-}else{
-  machine_name <- "local"
-}
-
 ################################################################################
 # Description
 ################################################################################
@@ -17,16 +9,10 @@ if(length(args)>0){
 library(rgdal)
 library(stringr)
 
-if(machine_name == "salix"){
-  
-  setwd("/srv/www/rgan/smoke_forecaster/")
-  # define path to repository for the server for writing files
-  home_path <- paste0("/srv/www/rgan/smoke_forecaster/")
-  
-}else{
-  # Local development taking place. 
-  home_path <- paste0(getwd(), "/")
-}
+
+# Local development taking place. 
+home_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/"
+
 
 # Get HMS smoke data
 urlBase <- "http://satepsanone.nesdis.noaa.gov/pub/FIRE/HMS/GIS/"
@@ -34,7 +20,7 @@ urlBase <- "http://satepsanone.nesdis.noaa.gov/pub/FIRE/HMS/GIS/"
 extensions <- c(".dbf", ".shp", ".shx")
 
 for (ext in extensions){
-  destFile <- paste0("./data/HMS/latest_smoke", ext)
+  destFile <- paste0(home_path, "data/HMS/latest_smoke", ext)
   url <- paste0(urlBase, "latest_smoke", ext)
   download.file(url=url, destfile=destFile, cacheOK=F)
 }
