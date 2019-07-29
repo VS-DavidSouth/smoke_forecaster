@@ -43,7 +43,3 @@ In order to plot the grid and counties on the leaflet map, only values in the sh
 9. smoke_dispersion.nc: Downloaded every day from Bluesky. Primary file used to estimate poplation weighted smoke and health impacts. smoke_dispersion_v2.nc made during this process based on code provided by Mazama Science.
 
 10. data_label.Rdata: Rdata file that I save during the bluesky download. It's really only the dates to forecast to make sure the dates displayed on the radio buttons on the shiny app match the data downloaded. There may be a better way to do this.
-
-11. example_data: Folder that contains example data that I used to test this. Basically a smaller subset of county, grid, etc I used to test things. Not really needed for the entire map.
-
-Steve, let me know if you don't have any of these files and I'll send them to you.

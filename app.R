@@ -13,17 +13,23 @@
 #### DELETE THESE LINES OF CODE AND SECTIONS THAT SAY "## uncommentthis later: "
 #### BEFORE RUNNING THIS ON THE SERVER. ALSO UNDO THE "## changed in local" changes.
 
+
+#------------------------------------------#
+#-----------------SETUP--------------------#
+#------------------------------------------#
+
 # load libraries ---------------------------------------------------------------
 library(shinydashboard)
 library(shiny)
 library(leaflet)
 library(rgdal) # for read shapefile
 library(stringr)
+library(RColorBrewer) # to get pretty colors that are colorblind friendly
 
-# Get information on when smoke data were last downloaded. This code is ugly as sin. 
-## uncomment this later: forecast_date <- stringr::str_sub(readLines("bluesky_download_log.txt")[2], 16, 23)
-## uncomment this later: forecast_hour <- stringr::str_sub(readLines("bluesky_download_log.txt")[3], 16, 17)
-## uncomment this later: forecast_url <- readLines("bluesky_download_log.txt")[5]
+
+#------------------------------------------#
+#-------SYMBOLOGY FOR ALL LAYERS-----------#
+#------------------------------------------#
 
 # Polygon color options 
 polyOpacity <- 0.5
@@ -40,7 +46,46 @@ pal_fire <- colorFactor(
   levels = c("WF", "RX")
 )
 
-# Set paths and load required data ---------------------------------------------
+# define color bin for hia estimates
+# Ryan comment: I do not think these values will exceed 300... but it could happen
+# TODO: Make a log of when this does happen. 
+hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
+
+# hia pallet
+hia_pal <- colorBin(c("blue", "orange"), 
+                    domain = c(1, max(hia_bin)),
+                    bins = hia_bin, 
+                    na.color="transparent")
+
+# define color bin for smoke layer ----
+# going with a bin since it will be easier to handle extreme colors
+smoke_bin <- c(2, 10, 20, 30, 40, 50, 100, 250, 1000)
+smoke_pal <- colorBin(palette=brewer.pal(n=length(smoke_bin), name="YlGnBu"), 
+                      domain = c(0,1000), 
+                      bins = smoke_bin,
+                      na.color = "black") # "#F0F2F0", "#000c40"
+
+# Ryan, what is going on here in this section. Where do these numbers come from?
+# add another legend for relative risk resp
+resp_bin <- round(exp((smoke_bin/10)*0.0507), 2)
+
+# resp pal
+resp_pal <- colorBin(c("#F0F2F0", "#000c40"), 
+                     domain = c(1,max(resp_bin)), 
+                     bins = resp_bin, 
+                     na.color = "red") # "transparent" to hide, if desired
+# asthma
+asthma_bin <- round(exp((smoke_bin/10)*0.0733), 2)
+
+# asthma pal 
+# TODO: Make different from 'resp pal'
+asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
+                       bins = asthma_bin, na.color = "transparent")
+
+
+#------------------------------------------#
+#-----SET PATHS AND LOAD CRITICAL DATA-----#
+#------------------------------------------#
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
@@ -68,45 +113,6 @@ latest_smoke <- readOGR(
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
 
-# define color bin for smoke layer ----
-# going with a bin since it will be easier to handle extreme colors
-bin <- c(2, 10, 20, 30, 40, 50, 100, 250, 1000)
-pal <- colorBin(palette=c("gray", "red", "purple"), 
-                domain = c(0,1000), 
-                bins = bin,
-                na.color = "black") # "#F0F2F0", "#000c40"
-
-################################################################################
-# Ryan, what is going on here in this section. Where do these numbers come from?
-# add another legend for relative risk resp
-resp_bin <- round(exp((bin/10)*0.0507), 2)
-
-# resp pal
-resp_pal <- colorBin(c("#F0F2F0", "#000c40"), 
-                     domain = c(1,max(resp_bin)), 
-                     bins = resp_bin, 
-                     na.color = "red") # "transparent" to hide, if desired
-# asthma
-asthma_bin <- round(exp((bin/10)*0.0733), 2)
-
-# asthma pal 
-# TODO: Make different from 'resp pal'
-asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
-                       bins = asthma_bin, na.color = "transparent")
-
-################################################################################
-
-# define color bin for hia estimates
-# Ryan comment: I do not think these values will exceed 300... but it could happen
-# TODO: Make a log of when this does happen. 
-hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
-
-# hia pallet
-hia_pal <- colorBin(c("blue", "orange"), 
-                    domain = c(1, max(hia_bin)),
-                    bins = hia_bin, 
-                    na.color="transparent")
-
 # read in saved R dates ----
 #load("./data/date_label.RData") # original
 #date_labels[1] <- paste(date_labels[1], "(today)") # original
@@ -118,12 +124,13 @@ date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
 # read in fire_locations ----
-#load("./data/fire_locations.RData") # Original
 load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
-# TODO: Current conditions
 
-# shiny dash board ui ----
+#------------------------------------------#
+#--------SETUP SHINY DASHBOARD UI----------#
+#------------------------------------------#
+
 head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:Sheena.Martenies@colostate.edu", "Contact Us")),
@@ -140,15 +147,15 @@ side <- dashboardSidebar(
               label = h3("Date to forecast:"),
               choices = date_list, 
               selected = "layer_1")
-  # uncomment this later: ,
-  # Show the forecast hour for the smoke data being displayed
-  # uncomment this later: fluidRow(
-  # uncomment this later:   column(align="center", width=12,
+  ## uncomment this later: ,
+  ## Show the forecast hour for the smoke data being displayed
+  ## uncomment this later: fluidRow(
+  ## uncomment this later:   column(align="center", width=12,
            #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
-  # uncomment this later:          p(tags$a(href = forecast_url, 
-  # uncomment this later:                   paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
-  # uncomment this later:          )
-  # uncomment this later:   )
+  ## uncomment this later:          p(tags$a(href = forecast_url, 
+  ## uncomment this later:                   paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
+  ## uncomment this later:          )
+  ## uncomment this later:   )
 ) # end side bar
 
 # body
@@ -162,8 +169,11 @@ body <- dashboardBody(
 # ui function with dashboard header, side, and body
 ui <- dashboardPage(head, side, body, skin = "black")
 
-# server section ---- 
-# consider adding a session function if I want to know statistics
+
+#------------------------------------------#
+#----------SETUP SHINY SERVER--------------#
+#------------------------------------------#
+
 server <- (function(input, output){
   # add base leaflet map
   # TODO: Set users LOCATION as the default center of view
@@ -195,7 +205,7 @@ server <- (function(input, output){
       ) %>%
       
       # add legend for smoke values
-      addLegend(pal=pal, 
+      addLegend(pal=smoke_pal, 
                 values=c(0, 1000),
                 title = htmltools::HTML("24-hr Smoke PM<sub>2.5</sub> [<span>&#181;</span>g/m<sup>3</sup>]"),
                 position = "bottomleft",
@@ -251,21 +261,12 @@ server <- (function(input, output){
     leafletProxy(mapId="map") %>%
       clearShapes() %>% 
       
-      # set a box that defines the dimensions of bluesky forecast
-      addRectangles(lng1=-130.0,
-                    lng2= -59.95, 
-                    lat1=22.5, 
-                    lat2=52.5,
-                    fillColor = "transparent", 
-                    color = "black", 
-                    weight = 2,
-                    group = "Forecasted Smoke") %>%
       
       # add smoke polygons 
       addPolygons(data = smk_forecast_display, 
                   group = "Forecasted Smoke", 
                   color = "transparent", 
-                  fillColor = ~pal(vals()), 
+                  fillColor = ~smoke_pal(vals()), 
                   weight=1, 
                   smoothFactor=1, 
                   fillOpacity=polyOpacity, 
@@ -312,8 +313,11 @@ server <- (function(input, output){
                   popup = paste("<b>Analyzed:</b>", latest_smoke$X1,
                                 "<br><b>Satellite:</b>", latest_smoke$Satellite,
                                 "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
-                                "<br><b>Detials:</b> www.ospo.noaa.gov/Products/land/hms.html"),
-                  color = pal(latest_smoke$Density),
+                                "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
+                  color = colorBin(palette=brewer.pal(n=length(smoke_bin), name="YlGnBu"), 
+                                   domain = c(0,1000), 
+                                   bins = smoke_bin,
+                                   na.color = "black"),
                   label = "Smoke plume drawn by HMS analyst"
       ) %>%
       
