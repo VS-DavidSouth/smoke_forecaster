@@ -45,21 +45,25 @@ pal_fire <- colorFactor(
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
 ##poly_path <- "./data/smk_poly"
-poly_path <- "C:\Users\apddsouth\Documents\Smoke_Predictor\data\smk_poly" ## changed in local
+poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
 
 # # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
 smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
-hia_path <- "./data/hia_poly"
+##hia_path <- "./data/hia_poly"  # original
+hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
 hia_layer <- "hia_poly"
 
 # hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display")
+#latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
+latest_smoke <- readOGR(
+  dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
+  layer="latest_smoke_display")  ## modified path
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
@@ -104,16 +108,18 @@ hia_pal <- colorBin(c("blue", "orange"),
                     na.color="transparent")
 
 # read in saved R dates ----
-load("./data/date_label.RData")
-date_labels[1] <- paste(date_labels[1], "(today)")
-date_labels[2] <- paste(date_labels[2], "(tomorrow)")
+#load("./data/date_label.RData") # original
+#date_labels[1] <- paste(date_labels[1], "(today)") # original
+#date_labels[2] <- paste(date_labels[2], "(tomorrow)") # original
+date_labels <- c('today', 'tomorrow')
 
 # create date names list to use with the radio button
 date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
 # read in fire_locations ----
-load("./data/fire_locations.RData")
+#load("./data/fire_locations.RData") # Original
+load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
 # TODO: Current conditions
 
@@ -127,26 +133,23 @@ head <- dashboardHeader(
 )
 
 # side bar
-## uncomment this later: CHANGE THE SECTION BELOW WHEN THIS GOES BACK TO SERVER
-if (1==2){
-  side <- dashboardSidebar(
-      
-      # reactive sidebar
-      selectInput(inputId="date_smoke", 
-                  label = h3("Date to forecast:"),
-                  choices = date_list, 
-                  selected = "layer_1"),
-      
-      # Show the forecast hour for the smoke data being displayed
-      fluidRow(
-        column(align="center", width=12,
-               #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
-               p(tags$a(href = forecast_url, 
-                        paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
-               )
-        )
-    ) # end side bar
-}
+side <- dashboardSidebar(
+  
+  # reactive sidebar
+  selectInput(inputId="date_smoke", 
+              label = h3("Date to forecast:"),
+              choices = date_list, 
+              selected = "layer_1")
+  # uncomment this later: ,
+  # Show the forecast hour for the smoke data being displayed
+  # uncomment this later: fluidRow(
+  # uncomment this later:   column(align="center", width=12,
+           #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
+  # uncomment this later:          p(tags$a(href = forecast_url, 
+  # uncomment this later:                   paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
+  # uncomment this later:          )
+  # uncomment this later:   )
+) # end side bar
 
 # body
 body <- dashboardBody(
@@ -157,7 +160,7 @@ body <- dashboardBody(
 
 
 # ui function with dashboard header, side, and body
-ui <- dashboardPage(head, side, body, skin = "black") 
+ui <- dashboardPage(head, side, body, skin = "black")
 
 # server section ---- 
 # consider adding a session function if I want to know statistics
