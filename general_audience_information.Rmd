@@ -1,0 +1,64 @@
+---
+title: "General Audience Description"
+author: "Sheena Martenies"
+date: "7/30/2019"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+---
+
+# Introduction
+
+# Key Information
+## Abbreviations
+
+
+## Glossary
+
+# Health Impact Asssessment
+
+## What is health impact assessment?
+
+Health impact assessment (HIA) is a policy- and decision-making tool that provides information on the potential health impacts of an environmental exposure scenario. For **smoke forecaster**, we use HIA to estimate the number of emergency department (ED) visits we might see due to wildfire smoke. This information helps environmental managers, city and county governments, and individuals plan for and make healthier choices during wildfire events.
+
+## What information do we need for the **smoke forecaster** HIA?
+
+The HIA used by **smoke forecaster** requires three key pieces of information to make estimates of how many additional emergency department visits we might expect during a wildfire event. We've outlined these key inputs below.
+
+**First**, we need to know the concentration of wildfire smoke in the air. Smoke forecaster uses data from the Blue Sky model developed by the U.S. Forest Service to estimate outdoor levels of wildfire smoke on the day of the analysis (i.e., today) and the next day (i.e., tomorrow). These predictions are made using multiple types of data, including:
+
+- wildfire characteristics, such as how much area has burned;
+
+- emissions data, including how much particulate matter and carbon monoxide are emitted from the wildfire;
+
+- and meteorology, including 72-hour data on temperature, wind speed, and humidity.
+
+Blue Sky uses these data in mathematical models that characterize how smoke disperses in the atmosphere. This model is represented in **smoke forecaster** as the “Analyzed Plumes” layer in the map. These plumes are an estimate of where smoke is currently located and where it will likely be the next day. The Blue Sky model also gives us an estimate of the concentration of wildfire smoke at the ground level. This is important for the **smoke forecaster** HIA because we are primarily concerned with smoke that people breath in while outside during a wildfire event.
+
+**Second**, we need to know how many people are exposed to wildfire smoke. Smoke forecaster uses data from the 2015 American Community Survey (an annual survey conducted by the US Census Bureau) to estimate how many people live in each county in the state. To calculate the population-weighted exposure to wildfire smoke, we use the data from the Blue Sky model and population density data from the Socioeconomic Data and Applications Center (SEDAC) at Columbia University.
+
+**Third**, we need to know how health outcomes and exposures are related. For **smoke forecaster**, we idenified our health outcomes of interest based on existing studies of the health effects of wildfire smoke. In the last few years, a few studies have been published that have identified 
+
+
+
+
+
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r cars}
+summary(cars)
+```
+
+
+```{r pressure, echo=FALSE, fig.cap="Figure 1", fig.align='center'}
+plot(pressure)
+```
+
