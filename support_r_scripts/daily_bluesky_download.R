@@ -332,7 +332,7 @@ smoke_stack <- brick(same_day_mean_smk, next_day_mean_smk)
 # model skill/accuracy on the same day and next day.  
 
 # RG 2018-08-16: Steve, moved this up from below to regrid smoke stack
-population_grid <- data.table::fread(paste0(home_path,"/data/2015-bluesky_grid_population.csv"))
+population_grid <- data.table::fread(paste0(home_path,"data/2015-bluesky_grid_population.csv"))
 # Old grid was on a east-west 468 to south_north 201 dimension grid
 # Defining app grid extent based on min and max lat/lon values
 app_extent <- extent(min(population_grid[,1]), max(population_grid[,1]),
