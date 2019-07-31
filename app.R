@@ -89,26 +89,26 @@ asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)),
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
-##poly_path <- "./data/smk_poly"
-poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
+poly_path <- "./data/smk_poly"
+# poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
 
 # # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
 smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
-##hia_path <- "./data/hia_poly"  # original
-hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
+hia_path <- "./data/hia_poly"  # original
+# hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
 hia_layer <- "hia_poly"
 
 # hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-#latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
-latest_smoke <- readOGR(
-  dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
-  layer="latest_smoke_display")  ## modified path
+latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
+# latest_smoke <- readOGR(
+  # dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
+  # layer="latest_smoke_display")  ## modified path
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
@@ -124,7 +124,8 @@ date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
 # read in fire_locations ----
-load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
+load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
+# load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
 
 #------------------------------------------#
@@ -135,6 +136,7 @@ head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:Sheena.Martenies@colostate.edu", "Contact Us")),
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/issues", "Report Bug")),
+  tags$li(class = "dropdown", tags$a(href = "", "More Info")),
   title = "Smoke Health Impact Assessment (HIA) Forecaster (beta)",
   titleWidth = 550
 )

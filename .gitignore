@@ -24,4 +24,10 @@ smk_poly/
 # ignore data folder again
 /data
 
+/HMS_Rx_freeze
+/HMS_wildfire_freeze
+/HMS_working
+
+/Smoke_Predictor
+
 *.pdf
