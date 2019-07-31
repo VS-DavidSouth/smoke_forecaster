@@ -12,7 +12,7 @@
 
 # Specific files to ignore
 bluesky_download_log.txt
-
+fire_locations.csv
 
 # Folders to ignore
 writing/
