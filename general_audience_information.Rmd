@@ -1,7 +1,7 @@
 ---
 title: "More Information on **smoke forecaster**"
-author: "Sheena Martenies"
-date: "7/30/2019"
+# author: "Sheena Martenies"
+# date: "7/30/2019"
 output: 
   html_document:
     toc: true
@@ -22,9 +22,19 @@ MORE HERE
 
 **HMS**: Hazard mapping system
 
+**HYS-PLIT**: Hybrid Single-Particle Lagrangian Integrated Trajectories
+
+**NOAA**: National Oceanic and Atmospheric Administration
+
 **PM~2.5~**: Particulate matter with an aerodynamic diameter less than 2.5 $\mu$m
 
+**RR**: Relative risk
+
+**US EPA**: United States Environmental Protection Agency
+
 **WF**: Wildfire
+
+**WRF-Chem**: Weather Research and Forecasting (WRF) model coupled with Chemistry (Chem)
 
 
 # Explanation of Key Terms
@@ -35,7 +45,7 @@ MORE HERE
 knitr::include_graphics(here::here("Figs", "pm2.5_scale_graphic-color_2.jpg"))
 ```
 
-**Relative Risk (RR):** Relative risk a ratio defined as the risk for an individual who is exposed to a hazard to experience a negative health outcome relative to a person who is not exposed to that hazard (Figure 2). For **smoke forecaster**, we use a relative risk for emergency department visits due to wildfire smoke exposure. For this tool, we consulted epidemiological studies that compared the liklihood that a person who was exposed to wildfire smoke would seek care in an emergency department to the likelihood of an ED visit for an person who was not exposed to wildfire smoke. The ratio of these risks is called the **relative risk** of an ED visit due to wildfire smoke exposure. A relative risk above 1 means that exposed populations are _more likely_ to need to visit the ED when exposed to wildfire smoke. The larger the relative risk, the stronger the link is between the hazard (in our case: wildfire smoke) and the outcome (ED visits). The Centers for Disease Control and Prevention has more information on how relative risks are calculated [here](https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section5.html).
+**Relative Risk (RR):** The relative risk (RR) is a type of effect estimate, which is a measure of the realtionship between an exposure and an outcome. Relative risk is a ratio defined as the risk for an individual who is exposed to a hazard to experience a negative health outcome relative to a person who is not exposed to that hazard (Figure 2).  For **smoke forecaster**, we use a relative risk for emergency department visits due to wildfire smoke exposure. For this tool, we consulted epidemiological studies that compared the liklihood that a person who was exposed to wildfire smoke would seek care in an emergency department to the likelihood of an ED visit for an person who was not exposed to wildfire smoke. The ratio of these risks is called the **relative risk** of an ED visit due to wildfire smoke exposure. A relative risk above 1 means that exposed populations are _more likely_ to need to visit the ED when exposed to wildfire smoke. The larger the relative risk, the stronger the link is between the hazard (in our case: wildfire smoke) and the outcome (ED visits). The Centers for Disease Control and Prevention has more information on how relative risks are calculated [here](https://www.cdc.gov/csels/dsepd/ss1978/lesson3/section5.html).
 
 ```{r echo=FALSE, fig.cap="**Figure 2: Relative Risk**", fig.align='center', out.width='70%'}
 knitr::include_graphics(here::here("Figs", "relative_risk.png"))
@@ -69,11 +79,20 @@ Blue Sky uses these data in mathematical models that characterize how smoke disp
 
 **Second**, we need to know how many people are exposed to wildfire smoke. Smoke forecaster uses data from the 2015 American Community Survey (an annual survey conducted by the US Census Bureau) to estimate how many people live in each county in the state. To calculate the population-weighted exposure to wildfire smoke, we use the data from the Blue Sky model and population density data from the Socioeconomic Data and Applications Center (SEDAC) at Columbia University.
 
-**Third**, we need to know how health outcomes and exposures are related. In our HIA for **smoke forecaster** we use the relative risk values reported by previous studies to understand the relationship between wildfire smoke and ED visits for  For **smoke forecaster**, we idenified our health outcomes of interest based on existing studies of the health effects of wildfire smoke. In the last few years, a few studies have been published that have identified relationships between emergency department visits for respiratory disease and 
+**Third**, we need to know how health outcomes and exposures are related. In our HIA for **smoke forecaster** we use the relative risk values reported by previous studies to understand the relationship between wildfire smoke and ED visits for  For **smoke forecaster**, we idenified our health outcomes of interest based on existing studies of the health effects of wildfire smoke. In the last few years, a few studies have been published that have identified relationships between emergency department visits for respiratory or cardiovascular diseases and wildfire smoke exposures (Table 1). These include studies that were conducted in Colorado, Washington, California, the western United States, and North Carolina. In general, the evidence is strongest for associations between wildfire exposures and ED visits for respiratory health issues. The evidence of a link between wildfire smoke and ED visits for cardiovascular diseases is weaker, so we have elected not to include these types of ED visits in our tool at this time. 
 
+```{r echo = F, include = F, message = F}
+library(readxl)
+cr_study_table <- read_xlsx(here::here("data", "cr_studies_summary.xlsx"))
+```
 
+**Table 1. Summary of available studies on the respiratory health effects of wildfire smoke**
+```{r, results = 'asis', echo = F}
+options(knitr.kable.NA = '')
+knitr::kable(cr_study_table)
+```
 
-
+For **smoke forecaster**, we elected to use the effect estimate from the study by Gan _et al._ (2017) for several reasons. First,  
 
 
 
