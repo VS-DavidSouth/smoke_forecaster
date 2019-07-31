@@ -146,7 +146,7 @@ side <- dashboardSidebar(
   selectInput(inputId="date_smoke", 
               label = h3("Date to forecast:"),
               choices = date_list, 
-              selected = "layer_1")
+              selected = "layer_1"),
   ## uncomment this later: ,
   ## Show the forecast hour for the smoke data being displayed
   ## uncomment this later: fluidRow(
@@ -156,6 +156,7 @@ side <- dashboardSidebar(
   ## uncomment this later:                   paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
   ## uncomment this later:          )
   ## uncomment this later:   )
+  h3(textOutput("caption"))
 ) # end side bar
 
 # body
@@ -314,10 +315,7 @@ server <- (function(input, output){
                                 "<br><b>Satellite:</b>", latest_smoke$Satellite,
                                 "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
                                 "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
-                  color = colorBin(palette=brewer.pal(n=length(smoke_bin), name="YlGnBu"), 
-                                   domain = c(0,1000), 
-                                   bins = smoke_bin,
-                                   na.color = "black"),
+                  color = "Gray",
                   label = "Smoke plume drawn by HMS analyst"
       ) %>%
       
