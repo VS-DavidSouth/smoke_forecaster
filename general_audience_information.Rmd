@@ -10,6 +10,10 @@ output:
 
 # Introduction
 
+**smoke forecaster** is an online wildfire smoke health impact assessment tool designed to provide environmental and public health officials at the state and local level with information about the potenital health risks of wildfire smoke exposure in their communities.
+
+MORE HERE
+
 # Acronyms
 
 **ED**: Emergency department
