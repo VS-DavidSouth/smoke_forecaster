@@ -41,6 +41,8 @@ MORE HERE
 
 **RX**: Prescribed burn
 
+**SEDAC**: Socioeconomic Data and Applications Center
+
 **US EPA**: United States Environmental Protection Agency
 
 **WF**: Wildfire
@@ -62,10 +64,10 @@ knitr::include_graphics(here::here("Figs", "pm2.5_scale_graphic-color_2.jpg"))
 knitr::include_graphics(here::here("Figs", "relative_risk.png"))
 ```
 
-**Respiratory Relative Risk:** This is the relative risk for going to the ED for any respiratory health condition (for example, asthma, chronic obstructive pulmonary disease [COPD], or pneumonia) for people who are exposed to wildfire smoke compared to people who are not exposed to wildfire smoke. The designation of a respiratory health condition is based on the diagnosis listed in a patient's medical record. These diagnosis codes are usually based on the International Classification of Disease (ICD) system. Examples of which diagnoses are included in the respriatory relative risk are outlined in Table 1 (see the section titled "What information do we need for the **smoke forecaster** HIA").
+**Respiratory Relative Risk:** This is the relative risk for going to the ED for any respiratory health condition (for example, asthma, chronic obstructive pulmonary disease [COPD], or pneumonia) for people who are exposed to wildfire smoke compared to people who are not exposed to wildfire smoke. **smoke forecaster** provides estimates of the relative risk of going to the ED for a respiratory health condition for the modeled wildfire smoke concentration at a specific location compared to a hypothetical scenario where there is no wildfire smoke at that location. Numbers greater than 1 indicate there is an increased risk of an ED visit for respiratory diseases for people living at that location. The designation of a respiratory health condition is based on the diagnosis listed in a patient's medical record. These diagnosis codes are usually based on the International Classification of Disease (ICD) system. Examples of which diagnoses are included in the respriatory relative risk are outlined in Table 1 (see the section titled "What information do we need for the **smoke forecaster** HIA"). 
 
 
-**Asthma Relative Risk:** This is the relative risk for going to the ED for an asthma exacerbation or asthma symptoms (e.g., wheeze, cough, or shortness of breath) for people who are exposed to wildfire smoke compared to people who are not exposed. The asthma relative risk is more specific than the respiratory relative risk, which includes all respiratory health diagnoses. The asthma relative risk only includes ED visits that fall under the asthma category (ICD code 493).
+**Asthma Relative Risk:** This is the relative risk for going to the ED for an asthma exacerbation or asthma symptoms (e.g., wheeze, cough, or shortness of breath) for people who are exposed to wildfire smoke compared to people who are not exposed. **smoke forecaster** provides estimates of the relative risk of going to the ED for asthma for the modeled wildfire smoke concentration at a specific location compared to a hypothetical scenario where there is no wildfire smoke at that location. Numbers greater than 1 indicate there is an increased risk of an ED visit for asthma for people living at that location.The asthma relative risk is more specific than the respiratory relative risk, which includes all respiratory health diagnoses. The asthma relative risk only includes ED visits that fall under the asthma category (ICD code 493).
 
 
 
@@ -85,7 +87,7 @@ The HIA used by **smoke forecaster** requires four key pieces of information to 
 
 ### Wildfire smoke concentrations
 
-**First**, we need to know the concentration of wildfire smoke in the air. Smoke forecaster uses data from the Blue Sky model developed by the U.S. Forest Service to estimate outdoor levels of wildfire smoke on the day of the analysis (i.e., today) and the next day (i.e., tomorrow). These predictions are made using multiple types of data, including:
+**First**, we need to know the concentration of wildfire smoke in the air at ground level where people breathe. Smoke forecaster uses data from the Blue Sky model developed by the U.S. Forest Service to estimate outdoor levels of wildfire smoke on the day of the analysis (i.e., today) and the next day (i.e., tomorrow). These predictions are made using multiple types of data, including:
 
 - wildfire characteristics, such as how much area has burned;
 
@@ -93,15 +95,13 @@ The HIA used by **smoke forecaster** requires four key pieces of information to 
 
 - and meteorology, including 72-hour data on temperature, wind speed, and humidity.
 
-Blue Sky uses these data in mathematical models that characterize how smoke disperses in the atmosphere. Figure 3 shows an example of how Blue Sky displays this information. PM~2.5~ from wildfire smoke is shown as gray plumes. This model is represented in **smoke forecaster** as the “Forecasted Smoke” layer on the map. These plumes are an estimate of where smoke is currently located and where it will likely be the next day. The Blue Sky model also gives us an estimate of the concentration of wildfire smoke at the ground level. This is important for the **smoke forecaster** HIA because we are primarily concerned with smoke that people breath in while outside during a wildfire event.
+Blue Sky uses these data in mathematical models that characterize how smoke disperses in the atmosphere and reaches the breathing zone of people living in the affected area. Figure 3 shows an example of how Blue Sky displays this information. PM~2.5~ from wildfire smoke is shown as gray pixels. This model is represented in **smoke forecaster** as the _Forecasted Smoke_ layer on the map. These plumes are an estimate of where smoke is currently located and where it will likely be the next day. The Blue Sky model also gives us an estimate of the concentration of wildfire smoke at the ground level. This is important for the **smoke forecaster** HIA because we are primarily concerned with smoke that people breath in while outside during a wildfire event. Blue Sky produces predictions (estimates) of the 24-hour average concentrations on the current day and the next day.  
 
 ```{r echo=FALSE, fig.cap="**Figure 3: Blue Sky Smoke Plumes**", fig.align='center', out.width='70%'}
 knitr::include_graphics(here::here("Figs", "bluesky_example.jpg"))
 ```
 
-**smoke forecaster** also shows the locations of current wildfires burning in the United States and Canada. This is also done using data from Blue Sky. Blue Sky models where fires are located using satellite data and other information sources. The models depicts wildfires (in red) and prescribed burns (in yellow), as shown in Figure 4.
-
-<!-- the Hazard Mapping System (HMS), which is run by the National Oceanic and Atmospheric Association (NOAA). Each day, NOAA analysts use satellite imagery to identify wildfires and the smoke plumes generated by those fires and create maps that can be downloaded by the public. We incorporate these maps into **smoke forecaster** to help users visualize where wildfires and wildfire smoke are located in North America. The HMS [website](https://www.ospo.noaa.gov/Products/land/hms.html) has more information on how these maps are developed and provides links to download the data. -->
+**smoke forecaster** also shows the locations of current wildfires burning in the United States and Canada. These locations are shown on the map in the _Fire Locations_ layer. The fire locations are plotted on the map using data from Blue Sky. Blue Sky models where fires are located using satellite data and other information sources. The models depicts wildfires (in red) and prescribed burns (in yellow), as shown in Figure 4.
 
 ```{r echo=FALSE, fig.cap="**Figure 4: Blue Sky Modeled Fires**", fig.align='center', out.width='70%'}
 knitr::include_graphics(here::here("Figs", "bluesky_example_fires.jpg"))
@@ -109,9 +109,11 @@ knitr::include_graphics(here::here("Figs", "bluesky_example_fires.jpg"))
 
 Data from the Blue Sky model can be accessed [here](https://tools.airfire.org)
 
+To help vizualize where smoke is located, **smoke forecaster** also includes a layer that shows visible wildfire smoke plumes (called _Visible Smoke Plumes_).  The data showing where these visible smoke plumes are located are generated by the Hazard Mapping System (HMS), which is run by the National Oceanic and Atmospheric Association (NOAA). Each day, NOAA analysts use satellite imagery to identify wildfires and the smoke plumes generated by those fires and create maps that can be downloaded by the public. We incorporate these maps into **smoke forecaster** to help users visualize where wildfires and wildfire smoke are located in North America. The HMS [website](https://www.ospo.noaa.gov/Products/land/hms.html) has more information on how these maps are developed and provides links to download the data.
+
 ### Exposed population
 
-**Second**, we need to know how many people are exposed to wildfire smoke. Smoke forecaster uses data from the 2015 American Community Survey (an annual survey conducted by the US Census Bureau) to estimate how many people live in each county in the state. To calculate the population-weighted exposure to wildfire smoke, we use the data from the Blue Sky model and population density data from the Socioeconomic Data and Applications Center (SEDAC) at Columbia University. Figure 5 shows the population density raster for area surrounding Denver, CO. 
+**Second**, we need to know how many people are exposed to wildfire smoke. Smoke forecaster uses data from the 2015 American Community Survey (an annual survey conducted by the US Census Bureau) to estimate how many people live in each county in the state. To calculate the population-weighted exposure to wildfire smoke, we use the wildfire smoke concentration data from the Blue Sky model and population density data from the Socioeconomic Data and Applications Center (SEDAC) at Columbia University. Figure 5 shows the population density raster for area surrounding Denver, CO. 
 
 ```{r echo=FALSE, fig.cap="**Figure 5: SEDAC Population Denisty estimates for Denver, CO**", fig.align='center', out.width='70%'}
 pop_den <- raster(here::here("figs", "Population_Density_AEA.tif"))
@@ -147,9 +149,23 @@ To estimate the number of additional ED visits for respiratory diseases or asthm
 knitr::include_graphics(here::here("Figs", "hif.png"))
 ```
 
-The HIF is a log-linear function, which the relationship between wildfire smoke and ED visits for respiratory health outcomes is strongest when concentrations are lower.
+The HIF is a log-linear function, which the relationship between smoke and ED visits for respiratory health outcomes is strongest when concentrations are lower and starts to level off with increasing concentrations of wildfire smoke. Importantly, the relationship is always positive, meaning there may be negative health effects at any level of wildfire smoke exposure.
 
+**smoke forecaster** displays the number of additional ED visits predicted for each county on the map using the _HIA_ layer. Figure 6 shows an example of what the _HIA_ layer looks like for Utah on August 1, 2019. In this figure, there is a wildfire burning southern Washington state (shown as a red dot and red and grey pixels). This wildfire is associated with increased wildfire smoke exposures and 6 additional ED visit per day in Yakima county, Washington.
 
+```{r echo=FALSE, fig.cap="**Figure 6: Smoke-Related ED Visits in Yakima County (Aug 1, 2019)**", fig.align='center', out.width='70%'}
+knitr::include_graphics(here::here("figs", "washington_hia_example.jpg"))
+```
+
+**note:: might want a different example figure**
+
+## What can we do with HIA estimates?
+
+The HIF produces an _**estimate**_ of the number of additional ED visits there might be over the typical number of ED visits in a county. This prediction is based on the number of ED visits that typically occur on a single day in a county, the number of people who live in that county, and the estiamted (predicted) concentration of wildfire smoke in the county. 
+
+The wildfire smoke exposures data and predicted number of ED visits estimated by the **smoke forecaster** tool are intended to provide environmental and public health officials information on where the most vulnerable communities in their jurisdictions might be during a wildfire event. This information can help officials plan their communication efforts and make decisions about where to allocate resources.
+
+MORE HERE-- Might need a discussion with Sheryl and Marilee about what else to add/how to make additions/what needs to come out.
 
 
 
