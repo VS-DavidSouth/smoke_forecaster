@@ -37,37 +37,60 @@ hms_files <- read_html(urlBase) %>%
   mutate(hms_files = as.character(hms_files)) %>% 
   filter(str_detect(hms_files, "smoke"))
 
-hms_latest <- filter(hms_files, str_detect(hms_files, "latest")) %>% 
-  filter(str_detect(hms_files, ".zip"))
+#' Temp folder to hold .zip files
+if(!dir.exists(paste0(home_path, "data/HMS/Temp"))) dir.create(paste0(home_path, "data/HMS/Temp"))
 
-#' Download the "latest smoke" file
-extensions <- c(".dbf", ".shp", ".shx")
+#' Download the "latest smoke" .zip file
+download.file(paste0(urlBase, "latest_smoke.zip"), 
+              destfile = paste0(home_path, "data/HMS/Temp/temp.zip"),
+              cacheOK = FALSE)
 
-for (ext in extensions){
-  destFile <- paste0(home_path, "data/HMS/latest_smoke", ext)
-  url <- paste0(urlBase, "latest_smoke", ext)
-  download.file(url=url, destfile=destFile, cacheOK=F)
+unzip(paste0(home_path, "data/HMS/Temp/temp.zip"), 
+      exdir = paste0(home_path, "data/HMS/Temp"))
+
+copy_files <- list.files(paste0(home_path, "data/HMS/Temp/data/oper/newhms/output"))
+updated_date <- today
+updated_name <- paste0("hms_smoke", today_char, ".prelim")
+
+#' If copy files is empty, it means the "latest_smoke" file is not yet available
+#' We can try the next most recent day or scrape this section all together
+check_date <- today
+while(length(copy_files) == 0) {
+  check_char <- as.character(format(check_date, "%Y%m%d"))
+  
+  hms_previous <- filter(hms_files, str_detect(hms_files, check_char)) %>% 
+    filter(str_detect(hms_files, ".zip"))
+  
+  #if(nrow(hms_previous) == 0) break
+  
+  download.file(paste0(urlBase, hms_previous$hms_files[1]), 
+                destfile = paste0(home_path, "data/HMS/Temp/temp.zip"),
+                cacheOK = FALSE)
+  
+  unzip(paste0(home_path, "data/HMS/Temp/temp.zip"), 
+        exdir = paste0(home_path, "data/HMS/Temp"))
+  
+  copy_files <- list.files(paste0(home_path, "data/HMS/Temp/data/oper/newhms/output"))
+  
+  updated_date <- check_date
+  updated_name <- gsub(".zip", "", hms_previous$hms_files[1])
+  check_date <- check_date + 1
+} 
+
+updated_date
+updated_name
+
+#' Copy the files from the temp directory to the HMS director
+for (i in 1:length(copy_files)) {
+  
+  file.copy(from = paste0(home_path, "data/HMS/Temp/data/oper/newhms/output/", copy_files[i]),
+            to = paste0(home_path, "data/HMS/"),
+            overwrite = T)
+  
+  file.remove(paste0(home_path, "data/HMS/Temp/data/oper/newhms/output/", copy_files[i]))
 }
 
-#' Also have the option to get the file from 2 days ado
-#' Can decide if we want to swap this shapefile out for the "latest_smoke" one
-prev <- Sys.Date() - 2
-prev_char <- as.character(format(prev, "%Y%m%d"))
-
-hms_prev <- filter(hms_files, str_detect(hms_files, prev_char)) %>% 
-  filter(!str_detect(hms_files, ".zip")) %>% 
-  filter(!str_detect(hms_files, ".pr"))
-
-for (i in 1:length(hms_prev$hms_files)){
-  destFile <- paste0(home_path, "data/HMS/", hms_prev$hms_files[i])
-  url <- paste0(urlBase, hms_prev$hms_files[i])
-  download.file(url=url, destfile=destFile, cacheOK=F)
-}
-
-hms_shp <- hms_prev[which(grepl(".shp", hms_prev$hms_files)), "hms_files"]
-hms_shp <- gsub(".shp", "", hms_shp)
-
-#' Read in the shapefile
+#' Read in the shapefiles
 #' If there are no features, do not update the "latest_smoke" shapefile
 #' We'll need to have some sort of indicator of when the smoke data were updated
 #' Maybe don't allow them to be displayed if the download date doesn't match the current date?
@@ -76,58 +99,41 @@ hms_shp <- gsub(".shp", "", hms_shp)
 smoke_path <- paste0(home_path, "data/HMS")
 
 try_error <- try(
-  latest_smoke <- st_read(dsn = smoke_path, layer="latest_smoke"),
+  latest_smoke <- st_read(dsn = smoke_path, layer=updated_name, stringsAsFactors = F),
   silent=T
 )
 
-try_error2 <- try(
-  yest_smoke <- st_read(dsn = smoke_path, layer= hms_shp),
-  silent=T
-)
+#' The same try-error code as Ryan and Steve
 
-#' test a known file
-co_shape <- "R:/RSTOR-Magzamen/Research/Secondary_Data/Colorado_Shapefiles"
-test <- st_read(dsn = co_shape, layer = "Munibounds")
+if(class(try_error) == "try-error") {
 
-#' Test the same shapefile copied to another director
-smoke <- "R:/RSTOR-Magzamen/Research/Secondary_Data/HMS_Smoke_Plumes"
-test2 <- st_read(dsn = smoke, layer = "hms_smoke20190729")
-test3 <- st_read(dsn = smoke, layer = hms_shp)
+  print("No polygon features in the latest file. Not updating for now.")
 
+} else {
 
-# 
-# 
-# if(class(try_error) == "try-error"){
-#   
-#   print("No polygon features in the latest file. Not updating for now.")
-#   
-# } else{
-#   
-#   print("Features in the latest smoke file. Updating the existing.")
-#   
-#   startString <- as.character(latest_smoke$Start)
-#   gap <- str_locate(startString, " ")
-#   len <- str_length(startString)
-#   YEARJDAY <- str_sub(startString, 1, gap[1])
-#   HOUR <- str_sub(startString, gap[,1]+1, len)
-#   DATE <- as.character(as.POSIXct(YEARJDAY, format = "%Y%d"))
-#   
-#   # Save the easier to read formatted date information in the dataframe
-#   latest_smoke$X1 <- paste0(DATE, " ", HOUR, "Z")
-#   
-#   # # Format the annoying time format YYYDD HH
-#   # latest_smoke$Start <- as.POSIXct(latest_smoke$Start, format = "%Y%d %H", tz="UTC")
-#   # latest_smoke$End <- as.POSIXct(latest_smoke$End, format = "%Y%d %H", tz="UTC")
-# 
-#   # rewrite the file
-#   rgdal::writeOGR(obj = latest_smoke, 
-#                   dsn = paste0(home_path,"data/HMS"), 
-#                   layer = "latest_smoke_display", 
-#                   driver = "ESRI Shapefile", 
-#                   overwrite_layer = T)
-#   
-# }
-# 
-# # TODO: Consider sharing this information with the user on the site. 
-# print(paste("HMS smoke plumes updated at:", Sys.time()))
-# print("Script run successfully.")
+  print("Features in the latest smoke file. Updating the existing.")
+  plot(st_geometry(latest_smoke))
+  
+  #' Save the updated date as a .rdata 
+  #' Maybe we can have a switch that basically only displays the plumes if the data
+  #' have been updated (i.e., updated_date == today)
+  save(updated_date,  file = paste0(smoke_path, "/plume_update_date.rdata"))
+
+  # rewrite the file
+  st_write(latest_smoke, 
+           dsn = paste0(home_path,"data/HMS"), 
+           layer = "latest_smoke_display",
+           driver = "ESRI Shapefile",
+           delete_layer = T, delete_dsn = T)
+  
+  # rgdal::writeOGR(obj = latest_smoke,
+  #                 dsn = paste0(home_path,"data/HMS"),
+  #                 layer = "latest_smoke_display",
+  #                 driver = "ESRI Shapefile",
+  #                 overwrite_layer = T)
+
+}
+
+# TODO: Consider sharing this information with the user on the site.
+print(paste("HMS smoke plumes updated on:", updated_date))
+print("Script run successfully.")
