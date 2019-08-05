@@ -10,7 +10,7 @@
 # exists in the ui and server code.
 
 #### THIS VERSION IS MEANT ONLY FOR RUNNING THE SHINY APP ON A LOCAL COMPUTER.
-#### DELETE THESE LINES OF CODE AND SECTIONS THAT SAY "## uncommentthis later: "
+#### DELETE THESE LINES OF CODE AND SECTIONS THAT SAY "## uncomment this later: "
 #### BEFORE RUNNING THIS ON THE SERVER. ALSO UNDO THE "## changed in local" changes.
 
 
@@ -35,52 +35,41 @@ library(RColorBrewer) # to get pretty colors that are colorblind friendly
 polyOpacity <- 0.5
 polyBorderOpacity <- .7
 
-# fireIcons <- icons(
-#   iconUrl = "http://thediscipleproject.net/wp-content/uploads/2013/07/fire-vector.png",
-#   iconWidth = 17, 
-#   iconHeight = 17
-# )
+fire_color <- function(fires) {
+  sapply(fires$type, function(fire) {
+    if(fire =="RX") {
+      "orange"
+    } else if(fire == "WF") {
+      "red"
+    } else {
+      "red"
+    } })
+}
 
-pal_fire <- colorFactor(
-  palette = c("red", "orange"),
+fire_pal <- colorFactor(
+  palette = c("red", "pink"),
   levels = c("WF", "RX")
 )
 
-# define color bin for hia estimates
+# define color bin for health impact assessment estimates
 # Ryan comment: I do not think these values will exceed 300... but it could happen
 # TODO: Make a log of when this does happen. 
 hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
 
 # hia pallet
-hia_pal <- colorBin(c("blue", "orange"), 
+hia_pal <- colorBin(brewer.pal(n=length(hia_bin-2), "YlOrRd"), 
                     domain = c(1, max(hia_bin)),
                     bins = hia_bin, 
                     na.color="transparent")
+#hia_pal <- brewer.pal(n=length(hia_bin-2), "PuRd")
 
 # define color bin for smoke layer ----
 # going with a bin since it will be easier to handle extreme colors
-smoke_bin <- c(2, 10, 20, 30, 40, 50, 100, 250, 1000)
-smoke_pal <- colorBin(palette=brewer.pal(n=length(smoke_bin), name="YlGnBu"), 
-                      domain = c(0,1000), 
+smoke_bin <- c(2, 25, 50, 200, 1000)
+smoke_pal <- colorBin(c("#feb14c", "#fd8c3c", "#f03b20", "#bd0026"), 
+                      domain = c(1, 1000), 
                       bins = smoke_bin,
                       na.color = "black") # "#F0F2F0", "#000c40"
-
-# Ryan, what is going on here in this section. Where do these numbers come from?
-# add another legend for relative risk resp
-resp_bin <- round(exp((smoke_bin/10)*0.0507), 2)
-
-# resp pal
-resp_pal <- colorBin(c("#F0F2F0", "#000c40"), 
-                     domain = c(1,max(resp_bin)), 
-                     bins = resp_bin, 
-                     na.color = "red") # "transparent" to hide, if desired
-# asthma
-asthma_bin <- round(exp((smoke_bin/10)*0.0733), 2)
-
-# asthma pal 
-# TODO: Make different from 'resp pal'
-asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)), 
-                       bins = asthma_bin, na.color = "transparent")
 
 
 #------------------------------------------#
@@ -89,26 +78,26 @@ asthma_pal <- colorBin(c("#F0F2F0", "#000c40"), domain = c(1,max(asthma_bin)),
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
-poly_path <- "./data/smk_poly"
-# poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
+#poly_path <- "./data/smk_poly"
+poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
 
 # # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
 smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
-hia_path <- "./data/hia_poly"  # original
-# hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
+#hia_path <- "./data/hia_poly"  # original
+hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
 hia_layer <- "hia_poly"
 
 # hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
-# latest_smoke <- readOGR(
-  # dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
-  # layer="latest_smoke_display")  ## modified path
+#latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
+latest_smoke <- readOGR(
+  dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
+  layer="latest_smoke_display")  ## modified path
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
@@ -124,8 +113,8 @@ date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
 # read in fire_locations ----
-load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
-# load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
+#load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
+load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
 
 #------------------------------------------#
@@ -143,7 +132,7 @@ head <- dashboardHeader(
 
 # side bar
 side <- dashboardSidebar(
-  
+  #sidebarPanel("<p>Testtesttest </p>"),
   # reactive sidebar
   selectInput(inputId="date_smoke", 
               label = h3("Date to forecast:"),
@@ -172,7 +161,6 @@ body <- dashboardBody(
 # ui function with dashboard header, side, and body
 ui <- dashboardPage(head, side, body, skin = "black")
 
-
 #------------------------------------------#
 #----------SETUP SHINY SERVER--------------#
 #------------------------------------------#
@@ -186,8 +174,8 @@ server <- (function(input, output){
     leaflet() %>% 
       
       # call map layer
-      #addTiles() %>%  # DS: original basemap
-      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%  # DS: dark grey basemap
+      #addTiles() %>%  # original basemap
+      addProviderTiles(providers$Esri.WorldGrayCanvas) %>%  # dark grey basemap
       
       # set bounds of map
       fitBounds(lng1=-123.925,lng2=-74.425, lat1=48.225, lat2=33.975) %>% 
@@ -210,15 +198,23 @@ server <- (function(input, output){
       # add legend for smoke values
       addLegend(pal=smoke_pal, 
                 values=c(0, 1000),
-                title = htmltools::HTML("24-hr Smoke PM<sub>2.5</sub> [<span>&#181;</span>g/m<sup>3</sup>]"),
+                title = htmltools::HTML("Smoke Particulate Matter (PM<sub>2.5</sub>, <span>&#181;</span>g/m<sup>3</sup>)"),
                 position = "bottomleft",
                 group="Forecasted Smoke") %>%
     
+      # add legend for Emergency Dept. Visits
       addLegend(pal=hia_pal,
                 values=hia_bin,
                 title = htmltools::HTML("<strong>Emergency Dept. Visits</strong>"),
                 position = "bottomleft",
-                group="HIA")
+                group="Emergency Dept. Visits")
+    
+      # add legend for Fire Locations
+      #addLegend(pal=fire_pal,
+      #        values=c("WF", "RX"),
+      #        title = htmltools::HTML("<strong>Fire Locations</strong>"),
+      #        position = "bottomright",
+      #        group="Fire Locations")
 
   })# end base leaflet
   
@@ -227,9 +223,6 @@ server <- (function(input, output){
     
     # set index as 1 or 2 for easier index
     layer_name <- as.character(input$date_smoke)
-    
-    print("layer_name")
-    print(layer_name)
     
     # define reactive label values of smoke concentrations and relative risks
     # TODO: Give vals a more descriptive name 
@@ -255,7 +248,7 @@ server <- (function(input, output){
       round(exp(vals()/10*0.0733),2)) %>% 
       lapply(htmltools::HTML)
     
-    # HIA labels
+    # Health Impact Assessment labels
     hia_vals <- reactive({getElement(county_hia@data, layer_name)})
     hia_county_name <- reactive({getElement(county_hia@data, "NAME")}, quoted=T)
     hia_county_pop <- reactive({getElement(county_hia@data, "Pop")})
@@ -282,44 +275,44 @@ server <- (function(input, output){
                   label = pm_label,
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
                                                            padding = "3px 8px"), 
-                                              textsize = "12px", direction = "auto")) %>% 
+                                              textsize = "12px", direction = "auto")
+                  ) %>% 
       
       # add HIA polygon
       # TODO: Make these labels nice and more informative following example of link below. 
       # http://rpubs.com/bhaskarvk/electoral-Map-2016
       addPolygons(data = county_hia, 
-                  group = "HIA", 
-                  color = "black",
+                  group = "Emergency Dept. Visits", 
                   fillColor = ~hia_pal(hia_vals()), 
+                  stroke=FALSE,
                   weight=1, 
                   smoothFactor=1, 
                   fillOpacity=polyOpacity,
                   # add highlight option
-                  highlight = highlightOptions(weight = 5, 
+                  highlight = highlightOptions(weight = 3, 
                                                color = "red", 
                                                bringToFront = T, 
                                                fillOpacity = polyBorderOpacity),
                   popup=paste("<strong>County:</strong>", hia_county_name(),
                               "<br><strong>Population:</strong>", hia_county_pop(),
                               "<br><strong>Emergency Department vists:</strong>", hia_vals()),
-                  label=paste("Click for", hia_county_name()," county HIA"),
+                  label=paste("Click for", hia_county_name()," county Health Impact Assessment"),
                   labelOptions = labelOptions(style = list("font-weight" = "normal",
                                                            padding = "3px 8px"),
                                               textsize = "12px",
                                               direction = "auto")
-      )  %>% 
-      # TODO: Give these a colorbar! Make different concentrations different
-      # TODO: colors! 
-      # TODO: Do not allow this to display when the date is set for tomorrow. 
-      addPolygons(data = latest_smoke,
-                  group = "Analyzed Plumes",
-                  popup = paste("<b>Analyzed:</b>", latest_smoke$X1,
-                                "<br><b>Satellite:</b>", latest_smoke$Satellite,
-                                "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
-                                "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
-                  color = "Gray",
-                  label = "Smoke plume drawn by HMS analyst"
-      ) %>%
+                  )  %>% 
+      
+      {if (layer_name=="layer_1")
+        addPolygons(., data = latest_smoke,
+                    group = "Analyzed Plumes",
+                    popup = paste("<b>Analyzed:</b>", latest_smoke$X1,
+                                  "<br><b>Satellite:</b>", latest_smoke$Satellite,
+                                  "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
+                                  "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
+                    color = "Gray",
+                    label = "Smoke plume drawn by HMS analyst"
+                    ) else .} %>%
       
       
       addCircleMarkers(data = fire_locations, 
@@ -332,17 +325,23 @@ server <- (function(input, output){
                        group="Fire Locations",
                        label=paste0("Type: ",fire_locations$type, " | Area: ", round(fire_locations$area))) %>% 
       
-      # add layer control
-      addLayersControl(
-        overlayGroups = c("Forecasted Smoke", 
-                          "HIA", 
+      # add layer control, but ommit Analyzed Plumes if the "tomorrow" input is chosen by user
+      {if (layer_name=="layer_1") addLayersControl(
+        .,
+        overlayGroups = c("Emergency Dept. Visits", 
                           "Fire Locations", 
+                          "Forecasted Smoke",
                           "Analyzed Plumes"),
-        options = layersControlOptions(collapsed = F)
-      ) %>%
+        options = layersControlOptions(collapsed = F))
+        else addLayersControl(.,
+          overlayGroups = c("Emergency Dept. Visits", 
+                            "Fire Locations", 
+                            "Forecasted Smoke"),
+          options = layersControlOptions(collapsed = F))
+        }%>%
       
       # Set default hidden groups 
-      hideGroup(group=c("HIA","Analyzed Plumes"))
+      hideGroup(group=c("Forecasted Smoke","Analyzed Plumes"))
     
     
   }) # end reactive layer
