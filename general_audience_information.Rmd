@@ -73,7 +73,7 @@ knitr::include_graphics(here::here("Figs", "relative_risk.png"))
 
 _more here as needed_
 
-# Health Impact Asssessment
+# Health Impact Assessment
 
 ## What is health impact assessment?
 
