@@ -21,6 +21,7 @@
 # load libraries ---------------------------------------------------------------
 library(shinydashboard)
 library(shiny)
+library(shinyBS)
 library(leaflet)
 library(rgdal) # for read shapefile
 library(stringr)
@@ -132,7 +133,6 @@ head <- dashboardHeader(
 
 # side bar
 side <- dashboardSidebar(
-  #sidebarPanel("<p>Testtesttest </p>"),
   # reactive sidebar
   selectInput(inputId="date_smoke", 
               label = h3("Date to forecast:"),
@@ -147,8 +147,25 @@ side <- dashboardSidebar(
   ## uncomment this later:                   paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
   ## uncomment this later:          )
   ## uncomment this later:   )
-  h3(textOutput("caption"))
+  
+  # Descriptive text
+  tags$div(class="header", checked=NA,
+           tags$p("Click below to learn about the map layers and how these calculations were made.")),
+  
+  # Create a series of  collapsable panels that give useful information. Uses the ShinyBS library.  
+  # More info on collapsing panels here: https://ebailey78.github.io/shinyBS/docs/Collapses.html#bsCollapsePanel
+  bsCollapse(id = "collapseExample", open = "Emergency Dept. Visits",
+             bsCollapsePanel("Emergency Dept. Visits", 
+                             tags$div(style="color:black", "Text here."), style = "info"),
+             bsCollapsePanel("Fire Locations", 
+                             tags$div(style="color:black", "MOar text here."), style = "info"),
+             bsCollapsePanel("Forecasted Smoke", 
+                             tags$div(style="color:black", "Even moar text here."), style = "info"),
+             bsCollapsePanel("Analyzed Plumes", 
+                             tags$div(style="color:black", "Plumes text here."), style = "info"))
 ) # end side bar
+
+
 
 # body
 body <- dashboardBody(
@@ -166,9 +183,8 @@ ui <- dashboardPage(head, side, body, skin = "black")
 #------------------------------------------#
 
 server <- (function(input, output){
+
   # add base leaflet map
-  # TODO: Set users LOCATION as the default center of view
-  # TODO: https://github.com/AugustT/shiny_geolocation
   output$map <- renderLeaflet({
     
     leaflet() %>% 
@@ -345,8 +361,9 @@ server <- (function(input, output){
     
     
   }) # end reactive layer
-  
 }) # end server function
+
+
 
 # launch shiny app (this is necessary for running on server)
 shinyApp(ui = ui, server = server)
