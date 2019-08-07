@@ -26,4 +26,5 @@ smk_poly/
 /HMS_Rx_freeze
 /HMS_wildfire_freeze
 /HMS_working
-
+Smoke_Predictor/data
+.Rproj.user
