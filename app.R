@@ -32,10 +32,6 @@ library(RColorBrewer) # to get pretty colors that are colorblind friendly
 #-------SYMBOLOGY FOR ALL LAYERS-----------#
 #------------------------------------------#
 
-# Polygon color options 
-polyOpacity <- 0.5
-polyBorderOpacity <- .7
-
 fire_color <- function(fires) {
   sapply(fires$type, function(fire) {
     if(fire =="RX") {
@@ -48,29 +44,32 @@ fire_color <- function(fires) {
 }
 
 fire_pal <- colorFactor(
-  palette = c("red", "pink"),
+  palette = c("red", "orange"),
   levels = c("WF", "RX")
 )
 
 # define color bin for health impact assessment estimates
 # Ryan comment: I do not think these values will exceed 300... but it could happen
 # TODO: Make a log of when this does happen. 
-hia_bin <- c(1, 10, 25, 50, 100, 150, 200, 250)
+hia_bin <- c(1, 10, 50, 100, 200, 300)
 
 # hia pallet
-hia_pal <- colorBin(brewer.pal(n=length(hia_bin-2), "YlOrRd"), 
-                    domain = c(1, max(hia_bin)),
+#hia_pal <- colorBin(brewer.pal(n=length(hia_bin-2), "Purples"),
+hia_pal <- colorBin(palette=c("#bfd3e6", "#8c96c6", "#8856a7", "#810f7c"),
+                    
                     bins = hia_bin, 
                     na.color="transparent")
 #hia_pal <- brewer.pal(n=length(hia_bin-2), "PuRd")
 
-# define color bin for smoke layer ----
-# going with a bin since it will be easier to handle extreme colors
-smoke_bin <- c(2, 25, 50, 200, 1000)
-smoke_pal <- colorBin(c("#feb14c", "#fd8c3c", "#f03b20", "#bd0026"), 
+# define color bin for predictged smoke layer
+smoke_bin <- c(1, 10, 25, 50, 200, 1000)
+smoke_pal <- colorBin(brewer.pal(length(smoke_bin), "YlOrBr"), 
                       domain = c(1, 1000), 
                       bins = smoke_bin,
                       na.color = "black") # "#F0F2F0", "#000c40"
+
+analyzed_plumes_color <- "grey"
+analyzed_plumes_outline_color <- "transparent"
 
 
 #------------------------------------------#
@@ -95,8 +94,8 @@ hia_layer <- "hia_poly"
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-#latest_smoke <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
-latest_smoke <- readOGR(
+#analyzed_plumes <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
+analyzed_plumes <- readOGR(
   dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
   layer="latest_smoke_display")  ## modified path
 
@@ -148,21 +147,25 @@ side <- dashboardSidebar(
   ## uncomment this later:          )
   ## uncomment this later:   )
   
-  # Descriptive text
+  # Add some descriptive text
   tags$div(class="header", checked=NA,
            tags$p("Click below to learn about the map layers and how these calculations were made.")),
   
   # Create a series of  collapsable panels that give useful information. Uses the ShinyBS library.  
   # More info on collapsing panels here: https://ebailey78.github.io/shinyBS/docs/Collapses.html#bsCollapsePanel
   bsCollapse(id = "collapseExample", open = "Emergency Dept. Visits",
-             bsCollapsePanel("Emergency Dept. Visits", 
-                             tags$div(style="color:black", "Text here."), style = "info"),
-             bsCollapsePanel("Fire Locations", 
-                             tags$div(style="color:black", "MOar text here."), style = "info"),
-             bsCollapsePanel("Forecasted Smoke", 
-                             tags$div(style="color:black", "Even moar text here."), style = "info"),
-             bsCollapsePanel("Analyzed Plumes", 
-                             tags$div(style="color:black", "Plumes text here."), style = "info"))
+             bsCollapsePanel(HTML('<font size="3" color="black">Emergency Dept. Visits</font>'), 
+                             tags$div(style="color:black", 
+                                      "Text here."), style = "info"),
+             bsCollapsePanel(HTML('<font size="3" color="black">Fire Locations</font>'), 
+                             tags$div(style="color:black", 
+                                      "MOar text here."), style = "info"),
+             bsCollapsePanel(HTML('<font size="3" color="black">Forecasted Smoke</font>'), 
+                             tags$div(style="color:black", 
+                                      "Even moar text here."), style = "info"),
+             bsCollapsePanel(HTML('<font size="3" color="black">Analyzed Plumes</font>'), 
+                             tags$div(style="color:black", 
+                                      "Plumes text here."), style = "info"))
 ) # end side bar
 
 
@@ -214,7 +217,7 @@ server <- (function(input, output){
       # add legend for smoke values
       addLegend(pal=smoke_pal, 
                 values=c(0, 1000),
-                title = htmltools::HTML("Smoke Particulate Matter (PM<sub>2.5</sub>, <span>&#181;</span>g/m<sup>3</sup>)"),
+                title = htmltools::HTML("Forecasted Smoke Particulates (PM<sub>2.5</sub>, <span>&#181;</span>g/m<sup>3</sup>)"),
                 position = "bottomleft",
                 group="Forecasted Smoke") %>%
     
@@ -223,14 +226,14 @@ server <- (function(input, output){
                 values=hia_bin,
                 title = htmltools::HTML("<strong>Emergency Dept. Visits</strong>"),
                 position = "bottomleft",
-                group="Emergency Dept. Visits")
+                group="Emergency Dept. Visits") %>% 
     
       # add legend for Fire Locations
-      #addLegend(pal=fire_pal,
-      #        values=c("WF", "RX"),
-      #        title = htmltools::HTML("<strong>Fire Locations</strong>"),
-      #        position = "bottomright",
-      #        group="Fire Locations")
+      addLegend(pal=fire_pal,
+              values=c("WF", "RX"),
+              title = htmltools::HTML("<strong>Fire Locations</strong>"),
+              position = "bottomright",
+              group="Fire Locations")
 
   })# end base leaflet
   
@@ -274,19 +277,18 @@ server <- (function(input, output){
       clearShapes() %>% 
       
       
-      # add smoke polygons 
+      # add smoke forecast polygons 
       addPolygons(data = smk_forecast_display, 
                   group = "Forecasted Smoke", 
-                  color = "transparent", 
+                  stroke=FALSE, 
                   fillColor = ~smoke_pal(vals()), 
                   weight=1, 
                   smoothFactor=1, 
-                  fillOpacity=polyOpacity, 
+                  fillOpacity=.9, 
                   # add highlight option
                   highlight = highlightOptions(weight = 5, 
-                                               color = "blue", 
-                                               bringToFront = T, 
-                                               fillOpacity = polyBorderOpacity),
+                                               bringToFront = TRUE, 
+                                               fillOpacity = 1),
                   # add smoke pm values
                   label = pm_label,
                   labelOptions = labelOptions(style = list("font-weight" = "normal", 
@@ -300,15 +302,16 @@ server <- (function(input, output){
       addPolygons(data = county_hia, 
                   group = "Emergency Dept. Visits", 
                   fillColor = ~hia_pal(hia_vals()), 
-                  stroke=FALSE,
+                  stroke=TRUE,
+                  color="black",
                   weight=1, 
                   smoothFactor=1, 
-                  fillOpacity=polyOpacity,
+                  fillOpacity=.9,
                   # add highlight option
                   highlight = highlightOptions(weight = 3, 
                                                color = "red", 
                                                bringToFront = T, 
-                                               fillOpacity = polyBorderOpacity),
+                                               fillOpacity =0.5),
                   popup=paste("<strong>County:</strong>", hia_county_name(),
                               "<br><strong>Population:</strong>", hia_county_pop(),
                               "<br><strong>Emergency Department vists:</strong>", hia_vals()),
@@ -320,13 +323,13 @@ server <- (function(input, output){
                   )  %>% 
       
       {if (layer_name=="layer_1")
-        addPolygons(., data = latest_smoke,
+        addPolygons(., data = analyzed_plumes,
                     group = "Analyzed Plumes",
-                    popup = paste("<b>Analyzed:</b>", latest_smoke$X1,
-                                  "<br><b>Satellite:</b>", latest_smoke$Satellite,
-                                  "<br><b>Density:</b>", latest_smoke$Density, "~&#181;</span>g/m<sup>3</sup>",
+                    popup = paste("<b>Analyzed:</b>", analyzed_plumes$X1,
+                                  "<br><b>Satellite:</b>", analyzed_plumes$Satellite,
+                                  "<br><b>Density:</b>", analyzed_plumes$Density, "~&#181;</span>g/m<sup>3</sup>",
                                   "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
-                    color = "Gray",
+                    fillColor = "Gray",
                     label = "Smoke plume drawn by HMS analyst"
                     ) else .} %>%
       
@@ -334,7 +337,7 @@ server <- (function(input, output){
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
                        lng = fire_locations$longitude, 
-                       color = ~pal_fire(type),
+                       color = ~fire_pal(type),
                        radius = ~sqrt(area/100), 
                        fill=F, 
                        weight = 0.5,
