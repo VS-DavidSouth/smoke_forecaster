@@ -32,17 +32,6 @@ library(RColorBrewer) # to get pretty colors that are colorblind friendly
 #-------SYMBOLOGY FOR ALL LAYERS-----------#
 #------------------------------------------#
 
-fire_color <- function(fires) {
-  sapply(fires$type, function(fire) {
-    if(fire =="RX") {
-      "orange"
-    } else if(fire == "WF") {
-      "red"
-    } else {
-      "red"
-    } })
-}
-
 fire_pal <- colorFactor(
   palette = c("red", "orange"),
   levels = c("WF", "RX")
@@ -159,7 +148,7 @@ side <- dashboardSidebar(
                                       "Text here."), style = "info"),
              bsCollapsePanel(HTML('<font size="3" color="black">Fire Locations</font>'), 
                              tags$div(style="color:black", 
-                                      "MOar text here."), style = "info"),
+                                      "Explanation of difference between WF and RX here."), style = "info"),
              bsCollapsePanel(HTML('<font size="3" color="black">Forecasted Smoke</font>'), 
                              tags$div(style="color:black", 
                                       "Even moar text here."), style = "info"),
@@ -330,6 +319,7 @@ server <- (function(input, output){
                                   "<br><b>Density:</b>", analyzed_plumes$Density, "~&#181;</span>g/m<sup>3</sup>",
                                   "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
                     fillColor = "Gray",
+                    stroke = FALSE,
                     label = "Smoke plume drawn by HMS analyst"
                     ) else .} %>%
       
