@@ -105,6 +105,9 @@ names(date_list) <- date_labels
 #load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
 load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
+# read when the HMS smoke plumes were updated. This creates the updated_date value, which is used later.
+# When testing this app, just set updated_date <-  [today's date] in format "YYYY-MM-DD"
+load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData")
 
 #------------------------------------------#
 #--------SETUP SHINY DASHBOARD UI----------#
@@ -114,7 +117,7 @@ head <- dashboardHeader(
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/blob/development/README.md", "About")),
   tags$li(class = "dropdown", tags$a(href = "mailto:Sheena.Martenies@colostate.edu", "Contact Us")),
   tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/issues", "Report Bug")),
-  tags$li(class = "dropdown", tags$a(href = "", "More Info")),
+  tags$li(class = "dropdown", tags$a(href = "https://github.com/smartenies/smoke_forecaster/blob/sm_local/general_audience_information.Rmd", "More Info")),
   title = "Smoke Health Impact Assessment (HIA) Forecaster (beta)",
   titleWidth = 550
 )
@@ -154,7 +157,8 @@ side <- dashboardSidebar(
                                       "Even moar text here."), style = "info"),
              bsCollapsePanel(HTML('<font size="3" color="black">Analyzed Plumes</font>'), 
                              tags$div(style="color:black", 
-                                      "Plumes text here."), style = "info"))
+                                      paste0("Plumes text here. The plumes layer will not be displayed if the HMS analyst ",
+                                             "has not yet updated the data for today.")), style = "info"))
 ) # end side bar
 
 
@@ -311,7 +315,7 @@ server <- (function(input, output){
                                               direction = "auto")
                   )  %>% 
       
-      {if (layer_name=="layer_1")
+      {if (layer_name=="layer_1" & updated_date==Sys.Date())
         addPolygons(., data = analyzed_plumes,
                     group = "Analyzed Plumes",
                     popup = paste("<b>Analyzed:</b>", analyzed_plumes$X1,
@@ -335,7 +339,7 @@ server <- (function(input, output){
                        label=paste0("Type: ",fire_locations$type, " | Area: ", round(fire_locations$area))) %>% 
       
       # add layer control, but ommit Analyzed Plumes if the "tomorrow" input is chosen by user
-      {if (layer_name=="layer_1") addLayersControl(
+      {if (layer_name=="layer_1" & updated_date==Sys.Date()) addLayersControl(
         .,
         overlayGroups = c("Emergency Dept. Visits", 
                           "Fire Locations", 
