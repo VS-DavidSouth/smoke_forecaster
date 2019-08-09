@@ -18,8 +18,8 @@ library(rvest)
 library(rgdal)
 
 # Local development taking place. 
-home_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/"
-#home_path <- "R:/RSTOR-Magzamen/Research/Projects/CO_Wildfires/Subprojects/smoke_forecaster/Smoke_Predictor/"
+# home_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/"
+home_path <- "R:/RSTOR-Magzamen/Research/Projects/CO_Wildfires/Subprojects/smoke_forecaster/Smoke_Predictor/"
 
 today <- Sys.Date()
 today_char <- as.character(format(today, "%Y%m%d"))
