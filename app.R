@@ -67,26 +67,26 @@ analyzed_plumes_outline_color <- "transparent"
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
-poly_path <- "./data/smk_poly"
-#poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
+#poly_path <- "./data/smk_poly"
+poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
 
 # # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
 smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
-hia_path <- "./data/hia_poly"  # original
-#hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
+#hia_path <- "./data/hia_poly"  # original
+hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
 hia_layer <- "hia_poly"
 
 # hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-analyzed_plumes <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
-# analyzed_plumes <- readOGR(
-#   dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
-#   layer="latest_smoke_display")  ## modified path
+#analyzed_plumes <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
+ analyzed_plumes <- readOGR(
+   dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
+   layer="latest_smoke_display")  ## modified path
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
@@ -102,13 +102,14 @@ date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
 # read in fire_locations ----
-load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
-#load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
+#load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
+load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
 # read when the HMS smoke plumes were updated. This creates the updated_date value, which is used later.
 # When testing this app, just set updated_date <-  [today's date] in format "YYYY-MM-DD"
-load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
-#load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData")
+#load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
+load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData")
+updated_date <- "2019-08-12" ## REMOVE THIS LATER
 
 #------------------------------------------#
 #--------SETUP SHINY DASHBOARD UI----------#
@@ -125,7 +126,8 @@ head <- dashboardHeader(
 
 # side bar
 side <- dashboardSidebar(
-  # reactive sidebar
+  width = 300,
+  # create a drop-down menu for the user to decide the day
   selectInput(inputId="date_smoke", 
               label = h3("Date to forecast:"),
               choices = date_list, 
@@ -142,71 +144,65 @@ side <- dashboardSidebar(
   
   # Add some descriptive text
   tags$div(class="header", checked=NA,
-           tags$p("Click below to learn about the map layers and how these calculations were made.")),
+           tags$p("Click below to learn about the map layers and how these calculations were made. 
+                  For a more detailed explanation, click the ", strong("More Info"), "tab.")),
   
   # Create a series of  collapsable panels that give useful information. Uses the ShinyBS library.  
   # More info on collapsing panels here: https://ebailey78.github.io/shinyBS/docs/Collapses.html#bsCollapsePanel
   bsCollapse(id = "collapseExample", open = "Fire Locations",
+             
+             # Info for Fire Locations panel
              bsCollapsePanel(HTML('<font size="3" color="black">Fire Locations</font>'), 
                              tags$div(style="color:black", 
-                                      HTML(paste("Smoke Forecaster shows the locations of fires burning across the United States and 
-                                      Canada. These locations are shown on the map in the Fire Locations layer. The fire 
-                                      locations are plotted on the map using data from Blue Sky, a model developed by the
-                                      United States Forest Service. Blue Sky models where fires 
-                                      are located using satellite data and other information sources. The models depicts 
-                                      both wildfires in red and prescribed burns (RX) in yellow. These RX burns are generally
-                                      smaller and are continuously monitored by fire crews.", 
-                                      "More information about the Fire Locations layer can be found in the More Info tab at 
-                                      the top of the page", 
+                                      HTML(paste("The <b>Fire Locations</b> layer shows the sites of fires burning across the United States and 
+                                      Canada. <span style=\"color: red\">Wildfires (WF)</span> are shown in red and 
+                                      <span style=\"color: orange\">prescribed burns (RX)</span> are shown in yellow.
+                                      RX burns are generally smaller and are continuously monitored by fire crews.",
+                                      "The locations come from from BlueSky, a model developed by the
+                                      United States Forest Service. View BlueSky data 
+                                      <a href=\"https://tools.airfire.org/websky/v1/#status\" style=\"color:#0C81A9\">here</a>,
+                                      more information about the BlueSky model 
+                                      <a href=\"https://www.fs.fed.us/bluesky/about/\" style=\"color:#0C81A9\">here</a>.",
                                       sep="<br><br/>"))), 
                              style = "info"),
-             bsCollapsePanel(HTML('<font size="3" color="black">Forecasted Smoke Concentrations</font>'), 
+             
+             # Info for forecasted smoke panel
+             bsCollapsePanel(HTML('<font size="3" color="black">Forecasted Smoke Concentration</font>'), 
                              tags$div(style="color:black", 
-                                      HTML(paste("Smoke Forecaster uses data from the Blue Sky model to estimate the ground-level 
-                                      concentrations of smoke due to wildfires. Blue Sky is a prediction model developed by the
-                                      US Forest Service. The model uses informaton on the size and intensity of the wildfire
-                                      as well as meterological data to generate estimates of ground-level smoke on the current
-                                      day and for tomorrow.", 
-                                      "When you hover your mouse over an area with wildfire smoke, Smoke Forecaster also provides 
-                                      the relative risk for emergency department visits for all respiratory
-                                      diseases and for asthma specifically. The relative risk value compares the risk of going to
-                                      the emergency department when exposed to the current level of smoke in the area to the risk of
-                                      going to the emergency department without being exposed to smoke. Relative risk levels above 1 
-                                      indicate that exposed people have a higher chance of going to the ED.",
-                                      "Smoke Forecaster uses these modeled concentrations and relative risks to estimate the number
-                                      of emergency department visits that might occur due to wildfire smoke exposure.",
-                                      "More information about the Forecasted Smoke layer and relative risk can be found in the 
-                                      More Info tab at the top of the page",
+                                      HTML(paste("The <b>Forecasted Smoke Concentration</b> layer uses data from the BlueSky model (see <b>Fire Locations</b> tab)
+                                      to estimate the ground-level concentrations of smoke due to wildfires.", 
+                                      "Hover your mouse over an area with wildfire smoke to see smoke concentration and
+                                      the Relative Risk values. Respiratory and Asthma Relative Risk levels above 1
+                                      indicate that people exposed to the smoke have a higher chance of going to the emergency department.",
+                                      "The Smoke Forecaster uses the values modeled in this layer to estimate the number
+                                      of emergency department visits that might occur due to wildfire smoke exposure, shown in 
+                                      the <b>Emergency Dept. Visits</b> layer.",
                                       sep="<br><br/>"))), 
                              style = "info"),
+             
+             # Info for smoke plumes panel
              bsCollapsePanel(HTML('<font size="3" color="black">Visible Smoke Plumes</font>'), 
                              tags$div(style="color:black", 
-                                      HTML(paste("To help vizualize where smoke is located, Smoke Forecaster also includes a layer 
-                                      that shows visible wildfire smoke plumes. The data showing where these visible 
-                                      smoke plumes are located are generated by the Hazard Mapping System (HMS), which 
-                                      is run by the National Oceanic and Atmospheric Association (NOAA). Each day, 
-                                      NOAA analysts use satellite imagery to identify wildfires and the smoke plumes 
-                                      generated by those fires and create maps that can be downloaded by the public.", 
-                                      "Occasionally the daily HMS data will not have been made publicly
-                                      available before Smoke Forecaster is updated. In this case, the Visible Smoke Plumes 
-                                      layer will not be displayed. Also, because the Visible Smoke Plumes data is based on satellite
-                                      imagery, the Visible Smoke Plumes layer is not available when estimating exposures and health
-                                      impacts in the future.",
-                                      "More information about the Visible Smoke Plumes layer can be found in the 
-                                      More Info tab at the top of the page",
+                                      HTML(paste("The <b>Visible Smoke Plumes</b> layer shows wildfire smoke plumes visible from satellite imagery. 
+                                      The data are generated each day by analysts for the Hazard Mapping System (HMS) which 
+                                      is run by the National Oceanic and Atmospheric Association (NOAA).", 
+                                      "Occasionally the daily HMS data will not have been released
+                                      by the time the Smoke Forecaster is updated. In this case, the Visible Smoke Plumes 
+                                      layer will not be displayed. The layer is also disabled when the Smoke Forecaster date
+                                      is set to tomorrow.",
                                       sep="<br><br/>"))), 
                              style = "info"),
+             # Info for Emergency Dept. Visits panel
              bsCollapsePanel(HTML('<font size="3" color="black">Emergency Dept. Visits</font>'), 
                              tags$div(style="color:black", 
-                                      HTML(paste("This is the estimated number of emergency department (ED) visits that would
-                                      be expected due to wildfire smoke exposures in each county affected by the smoke. 
-                                      Smoke Forecaster uses a health impact function to generate an estimate of how many
-                                      additional people might visit the ED for any respiratory health condition or for asthma
-                                      in particular. This estimate is based on the concentration of wildfire smoke in the air, the typical
-                                      number of ED visits that occur on a single day in the county, the number of people 
-                                      who live in the county, and the relationship between wildfire smoke and ED visits.",
-                                      "More information on how these estimates are calcuated can be found in the More Info 
-                                      tab at the top of the page.",
+                                      HTML(paste("You can click on the counties of the <b>Emergnecy Dept. Visits</b> layer to show the expected number of 
+                                      emergency department visits due to wildfire smoke exposure. 
+                                      The Smoke Forecaster uses a health impact function to generate an estimate of how many
+                                      additional people might visit the emergency department for any respiratory health condition or for asthma
+                                      in particular.",
+                                      "This estimate is based on the concentration of wildfire smoke in the air, the typical
+                                      number of emergency department visits per day for county, the number of people 
+                                      who live in the county, and the relationship between wildfire smoke and emergency department visits.",
                                       sep="<br><br/>"))), 
                              style = "info"))
 ) # end side bar
@@ -260,7 +256,7 @@ server <- (function(input, output){
       # add legend for smoke values
       addLegend(pal=smoke_pal, 
                 values=c(0, 1000),
-                title = htmltools::HTML("Forecasted Smoke Particulates (PM<sub>2.5</sub>, <span>&#181;</span>g/m<sup>3</sup>)"),
+                title = htmltools::HTML("Forecasted Smoke Concentration (PM<sub>2.5</sub>, <span>&#181;</span>g/m<sup>3</sup>)"),
                 position = "bottomleft",
                 group="Forecasted Smoke") %>%
     
@@ -322,7 +318,7 @@ server <- (function(input, output){
       
       # add smoke forecast polygons 
       addPolygons(data = smk_forecast_display, 
-                  group = "Forecasted Smoke Concentrations", 
+                  group = "Forecasted Smoke Concentration", 
                   stroke=FALSE, 
                   fillColor = ~smoke_pal(vals()), 
                   weight=1, 
@@ -392,19 +388,19 @@ server <- (function(input, output){
       {if (layer_name=="layer_1" & updated_date==Sys.Date()) addLayersControl(
         .,
         overlayGroups = c("Fire Locations", 
-                          "Forecasted Smoke Concentrations",
+                          "Forecasted Smoke Concentration",
                           "Visible Smoke Plumes",
                           "Emergency Dept. Visits"),
         options = layersControlOptions(collapsed = F))
         else addLayersControl(.,
           overlayGroups = c("Fire Locations",
-                            "Forecasted Smoke Concentrations",
+                            "Forecasted Smoke Concentration",
                             "Emergency Dept. Visits"),
           options = layersControlOptions(collapsed = F))
         }%>%
       
       # Set default hidden groups 
-      hideGroup(group=c("Forecasted Smoke Concentrations", "Visible Smoke Plumes", "Emergency Dept. Visits"))
+      hideGroup(group=c("Forecasted Smoke Concentration", "Visible Smoke Plumes", "Emergency Dept. Visits"))
     
     
   }) # end reactive layer
