@@ -1,0 +1,31 @@
+# File types to ignore
+*.Rproj.user
+*.Rproj
+*.Rhistory
+*.RData
+*.Ruserdata
+*.html
+*.pdf
+*.pptx
+*.nc
+*.zip
+
+
+# Specific files to ignore
+bluesky_download_log.txt
+fire_locations.csv
+
+# Folders to ignore
+writing/
+docs/
+figs/
+smoke_dispersion/
+rsconnect/
+tl_2016_us_county/
+smk_poly/
+/data
+/HMS_Rx_freeze
+/HMS_wildfire_freeze
+/HMS_working
+Smoke_Predictor/data
+.Rproj.user

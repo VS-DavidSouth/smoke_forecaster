@@ -1,0 +1,337 @@
+---
+title: "Calculating Proportion Intersect using Simple Features (sf)"
+author: "Ryan Gan"
+date: "10/12/2017"
+output: html_document
+---
+
+## Introduction 
+
+This document focuses on calculation of the intersection between two spatial polygons (shapefiles). The reason I want to calculation the intersection is so that I could population weight PM~2.5~ values based on grid cells for a given politcal boundary, in this case, county. This is my first time taking the "sf" package for a go and I'm excited about it's potential. 
+
+## Reading in county shapefile and grid as simple features (sf) 
+
+This is example code on using the relatively new "sf" simple features package. Perviously, I have used the sp, rgeos, and rgdal package for many spatial tasks/calculations. Use of sf allows for a faster and more memory-efficient way to perform spatial tasks. From what I can tell, the major difference is that a simple feature is a dataframe with information on the geometry as part of the observation, rather than a spatial polygon object. This would explain why it's more memory efficient. Another very attractive feature is that "sf" follows tidy principles for data manipulation and managment, and is compatible with the tidyverse. For this, I use the development version of ggplot2 to access the geom_sf feature. I expect "sf" and tidyverse to work even better together in the future.
+
+Let's read in the shapefile polygons as simple features for the Bluesky smoke forecasting grid and the polygons for United States counties (excluding Alaska and Hawaii).
+
+```{r setup}
+# trying out sf for the first time
+library(sf)
+# note that you need the development version of ggplot2 
+library(tidyverse)
+# load wrfgrid polygon ----
+# define relative path to polygon file
+poly_path <- "./data/bluesky_grid"
+poly_layer <- "bluesky_grid"
+# county path
+co_path <- "./data/us_county"
+co_layer <- "us_county"
+
+# read in bluesky grid
+bluesky_grid <- st_read(dsn = poly_path, layer = poly_layer)
+# the bluesky grid does not have an ID so we will assign each cell a number
+bluesky_grid$id <- as.numeric(seq(1:94068))
+# read county polygons
+us_county <- st_read(dsn = co_path, layer = co_layer)
+```
+
+Now that we've read in the two polygons, it looks like there are some unique features to the sf package vs some other packages like rgdal or rgeos. It looks like the imported simple features object contains more information than the simple polygon, which is cool. I haven't plotted the entire US county shapefile and the Bluesky grid because it's hard to see, but with smaller shapefiles and grids, I usually do this as a check.
+
+## Subsetting specific polygons (California)
+
+In the past, we calculated the proportion of intersection between each county polygon and grid cell for one state, which worked fine. However, when we try to apply the same method to the entire US, we ran in to what I think were memory problems (stack overflow?), and we were never able to get our desired product, a matrix of the proportion intersect for each cell id and county id. This was on a relatively decent high-performance computer too running in parallel and definately wouldn't work on your standard desktop or laptop. To solve this problem, we'll subset each state and only the cell grids of that state, which should reduce our memory use substantially. We can save the matrix for each state, free up the memory used, and start again with a new state. We can then combine all the matrices from each state to get our desired matrix. 
+
+For this example, we'll take it to a much smaller scale: the state of California.
+
+We'll also check the plots of each object to make sure we have what we need.
+
+```{r california_subset}
+# subset to california by FIPS code "06"
+cali_county <- us_county[us_county$STATEFP=="06", ] %>% 
+  # making a FIPS ID that I'll use later
+  mutate(FIPS = paste0(STATEFP, COUNTYFP))
+
+# clip by bbox function ------
+bbox_clip <- function(sf, bbox) {
+  # find the CRS of the sf object
+  crs <- sf::st_crs(sf)$proj4string
+  # create matrix
+  x <- c(bbox[1], bbox[1], bbox[3], bbox[3], bbox[1])
+  y <- c(bbox[2], bbox[4], bbox[4], bbox[2], bbox[2])
+  coords <- matrix(cbind(x, y), ncol=2)
+  # create polygon and assign same coord crs as sf object
+  coords_poly <- sp::Polygon(coords)
+  bbox_poly <- sp:: SpatialPolygons(list(sp::Polygons(list(coords_poly),
+    ID = "bbox")), proj4string = sp::CRS(crs))
+  # convert to sf feature
+  bbox_sf <- st_as_sf(bbox_poly)
+  # clip sf object
+  clipped_sf <- sf[bbox_sf,]
+  return(clipped_sf)
+}
+
+cali_bbox <- st_bbox(cali_county)
+
+# subset a smaller bluesky grid
+cali_grid <- bbox_clip(bluesky_grid, cali_bbox)
+
+# plot
+ggplot(cali_county) + 
+  geom_sf() +
+  geom_sf(data=cali_grid, aes(), alpha = 0.0) +
+  theme_bw()
+
+# write the two sf files for california to save for example
+# st_write(cali_county, paste0("./data/example_data/",
+#   "california_county/california_county.shp"))
+# 
+# st_write(cali_grid, paste0("./data/example_data/california_bluesky/",
+#                            "california_bluesky.shp"))
+```
+
+Looks like we have all the grids we need for the state of California. Let's move on to the proportion of intersection between each county and grid in each state. 
+
+## Proportion intersect calcuations for Los Angeles county
+
+Before we apply a function to the whole state, we'll subset start small with one county and grids in that county. I do this for a couple reasons. The first is I can test if my code is working on a small subset on my laptop before moving it to the server. The second is that it is easy to scale it up and use *apply* functions to apply the formula for each grid and county (for the entire US, eventually). The last reason is that I'll check the final matrix for the grid ids for that particular county to make sure they line up with these calculations here.
+
+I'm going to pick Los Angeles county since it's small and has some islands. We can subset in the same way we did before.
+
+```{r la_subset, warning = F}
+# subset orange county by fips code
+la_county <- cali_county[cali_county$COUNTYFP=="037",]
+# subset grids to orange county
+la_grid <- cali_grid[la_county, ]
+
+# dataframe of name and centroid to plot
+grid_names <- la_grid %>% 
+  group_by(id) %>% 
+  mutate(lon = unlist(st_centroid(geometry))[1],
+         lat = unlist(st_centroid(geometry))[2]) %>% 
+  ungroup() %>% 
+  select(id, lon, lat)
+# convert simple featrues to dataframe
+st_geometry(grid_names) <- NULL
+
+# plot grid over LA county and label grid cells
+ggplot() + 
+  geom_sf(data = la_county) +
+  geom_sf(data=la_grid, alpha = 0.0) +
+  geom_text(data=grid_names, aes(x=lon, y=lat, label=id), size = 2.5,
+            angle=45)+
+  theme_bw()
+```
+
+We'll calculate the proportion intersection of one grid, 55299, for the upper part of LA county.
+
+```{r proportion_intersect, warning=F}
+# first find the intersection between the two shapes
+intersect_sf <- st_intersection(la_county, la_grid[1,])
+# find the proportion intersect by subtracting the area of the intersection
+# by the area of the grid cell. as.numeric ditches the unit
+prop_intersect <- as.numeric(st_area(intersect_sf)/st_area(la_grid[1,]))
+# proportion of LA county in the grid 55299, which is the upper left hand corner 
+prop_intersect
+```
+
+Since "sf" brings in polygons as simple features as a data frame instead of multiple little polygons as part of a larger polygon, that changes how I can calculate proportion intersect. I believe it's more intuitive, takes less memory, and much faster. 
+
+Calculating the proportion intersect between all grids in LA county with LA county is as simple as putting the whole grid in the intersect function. Before, I had to subset each grid and find each intersection with the county polygon, which took a lot longer.
+
+```{r la_intersection, warning=F}
+# sf might make this easier since each object comes in as a dataframe and not
+# a bunch of little polygons as part of a big polygon
+# find intersection of grid for the county
+grid_area <- st_intersection(st_geometry(la_grid),st_geometry(la_county))
+# caluclate proportion intersect 
+prop_int <- as.numeric(st_area(grid_area)/st_area(la_grid))
+# now I need to assign it back to the county shapefile
+la_grid$proportion <- prop_int
+
+# make a dataframe with rounded proportion values
+grid_names <- la_grid %>% 
+  mutate(proportion = round(prop_int,2)) %>% 
+  group_by(id) %>% 
+  mutate(lon = unlist(st_centroid(geometry))[1],
+         lat = unlist(st_centroid(geometry))[2]) %>% 
+  ungroup() %>% 
+  select(id, lon, lat, proportion)
+# convert simple featrues to dataframe
+st_geometry(grid_names) <- NULL
+
+# plot
+ggplot(la_county) + 
+  geom_sf() +
+  geom_sf(data=la_grid, aes(fill=proportion), alpha=0.7) +
+  geom_text(data=grid_names, aes(x=lon, y=lat, label=proportion), 
+            size = 2.5, angle=45) +
+  theme_bw()
+```
+
+I calculated the intersection for each grid with the county shape, plotted a gradiet fill and the value of the proportion intersect. Based on the eye-ball test, it looks like our function worked. Our top-left grid cell also matches what we calculated before (I rounded to the nearest hundreth).
+
+Try it out on the state of California. I don't think I can use purrr map functions yet. I'll use a for loop.
+
+```{r california_intersect, warning=F}
+# I had some problems feeding the sf object directly in to the function when I
+# tried to use the apply or map functions, which led me to think purrr and map
+# were not compatible yet. If I feed in a vector of the state/county fips,
+# this should work
+
+# tibble of just the grid_id to join data too
+prop_int_tibble <- cali_grid$id %>% 
+  tibble() %>% 
+  rename(grid_id = ".")
+
+start_time <- Sys.time()
+
+for(i in 1:length(cali_county$FIPS)){
+  # subset county to find intersect
+  county <- slice(cali_county, i)
+  # extract fips number for variable name
+  fips_id <- paste0("fips_", county$FIPS)
+  # subset grid cells that touch any part of the county
+  grid <- cali_grid[county,]
+  # subset the intersected polygon
+  inter_poly <- st_intersection(grid, county) %>% 
+    # filter only to polygon or multipolygon type 
+    # to avoid errors with point or line types
+    filter(st_is(., c("POLYGON", "MULTIPOLYGON"))==T)
+  # filter grid ids to only grids in the inter_poly object
+  grid2 <- grid %>% filter(id %in% inter_poly$id) 
+  # find proportion intersect with original grid
+  prop_int <- as.numeric(st_area(inter_poly)/st_area(grid2))
+  # subset grid id
+  grid_id <- grid2$id
+  # make a tibble
+  county_grid_int <- tibble(grid_id, prop_int) %>% 
+    set_names(c("grid_id", fips_id))
+  # join with full tibble
+  prop_int_tibble <- prop_int_tibble %>% 
+    left_join(county_grid_int, by = "grid_id")
+} # end loop
+
+# stop cluster
+#stopCluster(cl)
+
+stop_time <- Sys.time()
+compute_time <- stop_time - start_time
+# run time
+compute_time
+
+# set missing NA values to 0
+cali_bluesky_pi <- prop_int_tibble %>% 
+  mutate_all(funs(replace(., is.na(.), 0)))
+
+# save file for a vignette
+write_csv(cali_bluesky_pi, paste0("./data/example_data/cali_bluesky_pi.csv"))
+```
+
+Checking LA county to see if estimates are similar.
+
+```{r la_check}
+la_county_tibble <- prop_int_tibble %>% 
+  select(grid_id,fips_06037) %>% 
+  # remove missing values
+  filter(!is.na(fips_06037))
+
+all.equal(la_county_tibble, la_grid)
+
+summary(la_county_tibble)
+summary(la_grid)
+```
+
+Next steps would be to figure out how to use the sf package with apply or map type functions. I think the for loop will work and so far apply and map don't work and I need to move on. I've saved the code I do have for now.
+
+```{r purrr attempt, warning = F, eval = F}
+proportion_intersect <- function(poly_sf, poly_id, grid_sf, grid_id){
+  # enquo lazy eval
+  poly_id <- enquo(poly_id)
+  grid_id <- enquo(grid_id)
+  # subset grid sf that contains poly_i
+  grid_i <- grid_sf[poly_sf,]
+  # set grid_i crs to poly_sf crs
+  standard_crs <- st_crs(poly_sf)
+  st_crs(grid_i) <- standard_crs 
+  # assume grid_i and poly_sf are constant
+  st_agr(poly_sf) = "constant"
+  st_agr(grid_i) = "constant"
+  # proportion intersect
+  intersect_sf <- st_intersection(grid_i, poly_sf) %>% 
+    # filter only to polygon or multipolygon type 
+    # to avoid errors with point or line types
+    filter(st_is(., c("POLYGON", "MULTIPOLYGON"))==T)
+  # calculation of proportion intersect
+  proportion <- as.numeric(st_area(intersect_sf)/st_area(grid_i)) %>% 
+    data_frame() %>% rename(proportion = ".")
+  # column bind the proportion to the intersect sf object
+  output_df <- intersect_sf %>% 
+    # eventually replace these with generic names
+    dplyr::select(!!grid_id, !!poly_id) %>% 
+    bind_cols(proportion)
+  # remove geometry
+  st_geometry(output_df) <- NULL
+  return(output_df)
+}
+
+?st_crs
+test <- cali_county %>% nest
+
+
+check <- proportion_intersect(poly_sf = test, poly_id = FIPS, 
+                              grid = bluesky_grid, grid_id = id)
+
+# purrr attempt
+prop_int_purrr <- test %>% 
+  lmap(~proportion_intersect(poly_sf = ., poly_id = FIPS, 
+                            grid = bluesky_grid, grid_id = id))
+
+apply(test,1, function(x) st_area(x))
+
+
+map(test, function(x) st_area(x))
+
+st_crs(test)
+st_crs(bluesky_grid)
+
+# extracting population densities from bonne's bluesky grid -----
+# i will move it later
+
+pop_nc <- ncdf4::nc_open("./data/blueskypopulation.nc")
+
+cali_id <- bluesky_grid$id
+# extract population and population density for california grid cells
+pop <- as.vector(ncdf4::ncvar_get(pop_nc, varid = "Population"))
+popden <- as.vector(ncdf4::ncvar_get(pop_nc, varid ="PopulationDensity"))
+
+# extract latlon
+lat <- ncdf4::ncvar_get(pop_nc, varid ="latitude")
+lon <- ncdf4::ncvar_get(pop_nc, varid = "longitude")
+# expand grid
+lonlat <- as.matrix(expand.grid(lon,lat))
+
+# create population dataframe and add names
+population_df <- data.frame(cbind(lonlat, pop, popden))
+# assign names
+names(population_df) <- c("lon", "lat", "pop", "popden")
+
+# sf label starts top left and goes right, then down one row
+# sort by desc(lat) then lon to match how i labeled the sf objects
+population_df <- population_df %>%  
+  arrange(desc(lat), lon) %>% 
+  mutate(id = seq(1:94068))
+
+# now I think i can subset to california by row number
+cal_population <- population_df %>% 
+  filter(id %in% cali_id) %>% 
+  dplyr::select(id, lon, lat, pop, popden)
+
+# this if finally right; save it
+write_csv(cal_population, paste0("./data/example_data/",
+                                 "2015-california_grid_population.csv"))
+
+```
+
+
+
