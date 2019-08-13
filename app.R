@@ -356,16 +356,16 @@ server <- (function(input, output){
       {if (layer_name=="layer_1" & updated_date==Sys.Date())
         addPolygons(., data = analyzed_plumes,
                     group = "Visible Smoke Plumes",
-                    popup = paste("<b>Analyzed:</b>", analyzed_plumes$X1,
-                                  "<br><b>Satellite:</b>", analyzed_plumes$Satellite,
-                                  "<br><b>Density:</b>", analyzed_plumes$Density, "~&#181;</span>g/m<sup>3</sup>",
-                                  "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
+                    #popup = paste("<b>Analyzed:</b>", analyzed_plumes$X1,
+                    #              "<br><b>Satellite:</b>", analyzed_plumes$Satellite,
+                    #              "<br><b>Density:</b>", analyzed_plumes$Density, "~&#181;</span>g/m<sup>3</sup>",
+                    #              "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
                     fillColor = "Gray",
                     stroke = FALSE,
                     label = "Smoke plume drawn by HMS analyst"
                     ) else .} %>%
       
-      
+      # add Fire Locations
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
                        lng = fire_locations$longitude, 
@@ -376,7 +376,8 @@ server <- (function(input, output){
                        group="Fire Locations",
                        label=paste0("Type: ",fire_locations$type, " | Area: ", round(fire_locations$area))) %>% 
       
-      # add layer control, but omit Analyzed Plumes if the "tomorrow" input is chosen by user
+      # add layer control, but omit Analyzed Plumes if the "tomorrow" input is chosen by user or if the 
+      # dates don't match up 
       {if (layer_name=="layer_1" & updated_date==Sys.Date()) addLayersControl(
         .,
         overlayGroups = c("Fire Locations", 
