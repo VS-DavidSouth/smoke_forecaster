@@ -109,7 +109,7 @@ load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 # When testing this app, just set updated_date <-  [today's date] in format "YYYY-MM-DD"
 #load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
 load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData")
-updated_date <- "2019-08-12" ## REMOVE THIS LATER
+updated_date <- "2019-08-13" ## REMOVE THIS LATER
 
 #------------------------------------------#
 #--------SETUP SHINY DASHBOARD UI----------#
@@ -336,8 +336,6 @@ server <- (function(input, output){
                   ) %>% 
       
       # add HIA polygon
-      # TODO: Make these labels nice and more informative following example of link below. 
-      # http://rpubs.com/bhaskarvk/electoral-Map-2016
       addPolygons(data = county_hia, 
                   group = "Emergency Dept. Visits", 
                   fillColor = ~hia_pal(hia_vals()), 
@@ -364,16 +362,16 @@ server <- (function(input, output){
       {if (layer_name=="layer_1" & updated_date==Sys.Date())
         addPolygons(., data = analyzed_plumes,
                     group = "Visible Smoke Plumes",
-                    popup = paste("<b>Analyzed:</b>", analyzed_plumes$X1,
-                                  "<br><b>Satellite:</b>", analyzed_plumes$Satellite,
-                                  "<br><b>Density:</b>", analyzed_plumes$Density, "~&#181;</span>g/m<sup>3</sup>",
-                                  "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
+                    #popup = paste("<b>Analyzed:</b>", analyzed_plumes$X1,
+                    #              "<br><b>Satellite:</b>", analyzed_plumes$Satellite,
+                    #              "<br><b>Density:</b>", analyzed_plumes$Density, "~&#181;</span>g/m<sup>3</sup>",
+                    #              "<br><b>Details:</b> www.ospo.noaa.gov/Products/land/hms.html"),
                     fillColor = "Gray",
                     stroke = FALSE,
                     label = "Smoke plume drawn by HMS analyst"
                     ) else .} %>%
       
-      
+      # add Fire Locations
       addCircleMarkers(data = fire_locations, 
                        lat = fire_locations$latitude,
                        lng = fire_locations$longitude, 
@@ -384,7 +382,8 @@ server <- (function(input, output){
                        group="Fire Locations",
                        label=paste0("Type: ",fire_locations$type, " | Area: ", round(fire_locations$area))) %>% 
       
-      # add layer control, but omit Analyzed Plumes if the "tomorrow" input is chosen by user
+      # add layer control, but omit Analyzed Plumes if the "tomorrow" input is chosen by user or if the 
+      # dates don't match up 
       {if (layer_name=="layer_1" & updated_date==Sys.Date()) addLayersControl(
         .,
         overlayGroups = c("Fire Locations", 

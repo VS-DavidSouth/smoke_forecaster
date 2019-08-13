@@ -1,9 +1,7 @@
 # smoke_forecaster
 Shiny app of maps for forecasts of smoke and health impacts. 
 
-# THIS IS AN EARLY PROTOTYPE. USE AT YOUR OWN RISK.
-
-The frozen version of the site can be viewed here: http://rgan.atmos.colostate.edu/ 
+The server runing this code can be viewed here: http://rgan.atmos.colostate.edu/ 
 
 We welcome all feedback. 
 
