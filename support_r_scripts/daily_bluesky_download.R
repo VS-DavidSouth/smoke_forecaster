@@ -50,7 +50,7 @@ if(machine_name == "salix"){
   
 }else{
   # Local development taking place. 
-  home_path <- paste0(getwd(), "/")
+  home_path <- paste0(getwd(), "/Smoke_Predictor/")
 }
 
 # download bluesky daily output -----------------------------------------------
@@ -108,7 +108,7 @@ check_for_files <- function(URL){
     # When we have both, rename these files, get rid of appended "test" at 
     # end of name
     file.rename(fire_locations_dest, paste0(home_path, "data/fire_locations.csv"))
-    file.rename(smoke_dispersion_dest, paste0(home_path, "data/smoke_dispersion_test.nc"))
+    file.rename(smoke_dispersion_dest, paste0(home_path, "data/smoke_dispersion.nc"))
     
   } else{
     result <- FALSE
@@ -154,7 +154,7 @@ line2 <- paste("Forecast Date:", forecast_date)
 line3 <- paste("Forecast Hour:", forecast_hour)
 
 # Re-save this as an Rdataframe with subset rows so that the app runs faster
-load_try <- try(fire_locations <- read.csv("./data/fire_locations.csv"), silent=T)
+load_try <- try(fire_locations <- read.csv(paste0(home_path, "data/fire_locations.csv")), silent=T)
 if(class(load_try)=="try-error"){
   stop("The fire_locations.csv contain no data. Halting download script.")
 } else{
@@ -164,7 +164,8 @@ if(class(load_try)=="try-error"){
 # We do not want or need most rows of fire_locations
 column_mask <- names(fire_locations) %in% c("latitude", "longitude", "type", "area")
 fire_locations <- fire_locations[,column_mask]
-save(fire_locations, file="data/fire_locations.RData")
+paste0(home_path, "data/smoke_dispersion.nc")
+save(fire_locations, file=paste0(home_path, "data/fire_locations.RData"))
 
 line4 <- paste("Both fire locations and smoke dispersion downloaded from")
 line5 <- paste(URL)
@@ -176,7 +177,6 @@ close(download_log)
 # saved smoke netcdf file manipulaton 
 ################################################################################
 # TODO: Create a new log that documents the processing of these nc data. 
-
 fileName <- paste0(home_path, "data/smoke_dispersion.nc")
 
 # This function loads the most recently downloaded smoke dispersion .nc file
@@ -332,7 +332,7 @@ smoke_stack <- brick(same_day_mean_smk, next_day_mean_smk)
 # model skill/accuracy on the same day and next day.  
 
 # RG 2018-08-16: Steve, moved this up from below to regrid smoke stack
-population_grid <- data.table::fread("./data/2015-bluesky_grid_population.csv")
+population_grid <- data.table::fread(paste0(home_path,"data/2015-bluesky_grid_population.csv"))
 # Old grid was on a east-west 468 to south_north 201 dimension grid
 # Defining app grid extent based on min and max lat/lon values
 app_extent <- extent(min(population_grid[,1]), max(population_grid[,1]),
@@ -400,14 +400,14 @@ save(smk_forecast_2, file=paste0(home_path,"/data/smk_poly/smk_forecast_2.RData"
 
 # remove smk poly to save space
 rm(smk_poly)
-
+####### RETURN HERE
 ################################################################################
 # Calculate population-weighted county smoke pm2.5 values 
 ################################################################################
 # Read in proportion-intersect matrix between grid and county shapes
 # NOTE: attempting to view this table in RStudio will kill RStudio. 
 # NOTE: file created by proportion_intersect_bluesky_grid_us_counties.R 
-grid_county_pi <- data.table::fread("./data/bluesky_county_prop_intersect.csv")
+grid_county_pi <- data.table::fread(paste0(home_path,"/data/bluesky_county_prop_intersect.csv"))
 
 # Get dimensions for subset indexing
 # GCP = short for "grid_county_pi", second number is number of US counties.

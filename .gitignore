@@ -1,27 +1,31 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
-bluesky_download_log.txt
-session.RData
-
-writing/*
-
-# ignore net cdf file types 
-*.nc
-
+# File types to ignore
+*.Rproj.user
 *.Rproj
-
-smoke_dispersion/
-
-# ignore rsconnect folder
-rsconnect/
-# ignore shapefile folder
-tl_2016_us_county/
-
-# ignore smoke polygon folder
-smk_poly/
-# ignore data folder again
-/data
-
+*.Rhistory
+*.RData
+*.Ruserdata
+*.html
 *.pdf
+*.pptx
+*.nc
+*.zip
+
+
+# Specific files to ignore
+bluesky_download_log.txt
+fire_locations.csv
+
+# Folders to ignore
+writing/
+docs/
+figs/
+smoke_dispersion/
+rsconnect/
+tl_2016_us_county/
+smk_poly/
+/data
+/HMS_Rx_freeze
+/HMS_wildfire_freeze
+/HMS_working
+Smoke_Predictor/data
+.Rproj.user
