@@ -9,10 +9,6 @@
 # version lighter as the server can't handle the raster brick. That code still
 # exists in the ui and server code.
 
-#### THIS VERSION IS MEANT ONLY FOR RUNNING THE SHINY APP ON A LOCAL COMPUTER.
-#### DELETE THESE LINES OF CODE AND SECTIONS THAT SAY "## uncomment this later: "
-#### BEFORE RUNNING THIS ON THE SERVER. ALSO UNDO THE "## changed in local" changes.
-
 
 #------------------------------------------#
 #-----------------SETUP--------------------#
@@ -67,49 +63,48 @@ analyzed_plumes_outline_color <- "transparent"
 
 # read in smoke forecast shapefile ----
 # define relative path to polygon file
-#poly_path <- "./data/smk_poly"
-poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
+poly_path <- "./data/smk_poly"
+#poly_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/smk_poly" ## changed in local
 
 # # read bluesky forecast polygon for the two forecasted dates 
 smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
 smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
-#hia_path <- "./data/hia_poly"  # original
-hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
+hia_path <- "./data/hia_poly"  # original
+#hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
 hia_layer <- "hia_poly"
 
 # hia polygon
 county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
-#analyzed_plumes <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
- analyzed_plumes <- readOGR(
-   dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
-   layer="latest_smoke_display")  ## modified path
+analyzed_plumes <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
+#analyzed_plumes <- readOGR(
+   #dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
+   #layer="latest_smoke_display")  ## modified path
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
 
 # read in saved R dates ----
-#load("./data/date_label.RData") # original
-#date_labels[1] <- paste(date_labels[1], "(today)") # original
-#date_labels[2] <- paste(date_labels[2], "(tomorrow)") # original
-date_labels <- c('today', 'tomorrow')
+load("./data/date_label.RData") # original
+date_labels[1] <- paste(date_labels[1], "(today)") # original
+date_labels[2] <- paste(date_labels[2], "(tomorrow)") # original
+#date_labels <- c('today', 'tomorrow') # changed in local
 
 # create date names list to use with the radio button
 date_list <- list("layer_1", "layer_2")
 names(date_list) <- date_labels
 
 # read in fire_locations ----
-#load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
-load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
+load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
+#load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
 # read when the HMS smoke plumes were updated. This creates the updated_date value, which is used later.
 # When testing this app, just set updated_date <-  [today's date] in format "YYYY-MM-DD"
-#load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
-load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData")
-updated_date <- "2019-08-12" ## REMOVE THIS LATER
+load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
+#load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData") # changed in local
 
 #------------------------------------------#
 #--------SETUP SHINY DASHBOARD UI----------#
@@ -132,15 +127,14 @@ side <- dashboardSidebar(
               label = h3("Date to forecast:"),
               choices = date_list, 
               selected = "layer_1"),
-  ## uncomment this later: ,
-  ## Show the forecast hour for the smoke data being displayed
-  ## uncomment this later: fluidRow(
-  ## uncomment this later:   column(align="center", width=12,
+  # Show the forecast hour for the smoke data being displayed
+  fluidRow(
+    column(align="center", width=12,
            #p(paste0("Model Run: ", forecast_date, " ",forecast_hour, "Z"))
-  ## uncomment this later:          p(tags$a(href = forecast_url, 
-  ## uncomment this later:                   paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
-  ## uncomment this later:          )
-  ## uncomment this later:   )
+           p(tags$a(href = forecast_url, 
+                    paste0("Model Run Used: ", forecast_date, " ", forecast_hour, "Z")))
+           )
+    ),
   
   # Add some descriptive text
   tags$div(class="header", checked=NA,
@@ -336,8 +330,6 @@ server <- (function(input, output){
                   ) %>% 
       
       # add HIA polygon
-      # TODO: Make these labels nice and more informative following example of link below. 
-      # http://rpubs.com/bhaskarvk/electoral-Map-2016
       addPolygons(data = county_hia, 
                   group = "Emergency Dept. Visits", 
                   fillColor = ~hia_pal(hia_vals()), 
