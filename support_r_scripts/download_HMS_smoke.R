@@ -1,3 +1,11 @@
+#!/usr/bin/env Rscript
+args = commandArgs(trailingOnly=TRUE)
+if(length(args)>0){
+  machine_name <- args[1]
+}else{
+  machine_name <- "local"
+}
+
 ################################################################################
 # Description
 ################################################################################
@@ -17,9 +25,16 @@ library(sf)
 library(rvest)
 library(rgdal)
 
-# Local development taking place. 
-# home_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/"
-home_path <- "R:/RSTOR-Magzamen/Research/Projects/CO_Wildfires/Subprojects/smoke_forecaster/Smoke_Predictor/"
+if(machine_name == "salix"){
+  
+  setwd("/srv/www/rgan/smoke_forecaster/")
+  # define path to repository for the server for writing files
+  home_path <- paste0("/srv/www/rgan/smoke_forecaster/")
+  
+}else{
+  # Local development taking place. 
+  home_path <- paste0(getwd(), "/")
+}
 
 today <- Sys.Date()
 today_char <- as.character(format(today, "%Y%m%d"))
@@ -41,7 +56,7 @@ if(!dir.exists(paste0(home_path, "data/HMS/Temp"))) dir.create(paste0(home_path,
 
 #' Download the "latest smoke" .zip file
 download.file(paste0(urlBase, "latest_smoke.zip"), 
-              destfile = paste0(home_path, "data/HMS/Temp/temp.zip"),
+              destfile = paste0("data/HMS/Temp/temp.zip"),
               cacheOK = FALSE)
 
 unzip(paste0(home_path, "data/HMS/Temp/temp.zip"), 

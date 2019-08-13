@@ -32,9 +32,6 @@ library(RCurl)
 library(lubridate) # for day()
 library(data.table) # will interfere with lubridate so use libridate::FUNCTION
 
-# TODO: consider these as possible user arguments 
-# RG 2018-08-16: Ask Steve to explain his thought here
-# SB 2018-08-21: I think we may use different models output in the future. 
 model <- "GFS-0.15deg"
 PMThresh <- 2
 
@@ -56,9 +53,6 @@ if(machine_name == "salix"){
 # download bluesky daily output -----------------------------------------------
 
 # download fire locations from bluesky runs ----
-# note right now I download only the location file, but I may work in
-# fire information in the future. looks like it's contained in the json file
-# Note: changed "forecast" to "combined" estimate on Sept 5 2017
 url_base <- paste0("https://smoke.airfire.org/bluesky-daily/output/standard/", model,"/")
 
 # Check to see if todays date 12Z forecast exists. 

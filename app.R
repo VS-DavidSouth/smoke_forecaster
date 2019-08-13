@@ -71,8 +71,7 @@ smk_forecast_1 <- readOGR(dsn = poly_path, layer = "smk_poly_1")
 smk_forecast_2 <- readOGR(dsn = poly_path, layer = "smk_poly_2")
 
 # read in hia estimate ----
-hia_path <- "./data/hia_poly"  # original
-#hia_path <- "C:/Users/apddsouth/Documents/Smoke_Predictor/data/hia_poly"
+hia_path <- "./data/hia_poly"
 hia_layer <- "hia_poly"
 
 # hia polygon
@@ -80,18 +79,14 @@ county_hia <- readOGR(dsn = hia_path, layer = hia_layer)
 
 # Current smoke conditions
 analyzed_plumes <- readOGR(dsn="./data/HMS", layer="latest_smoke_display") # Original path
-#analyzed_plumes <- readOGR(
-   #dsn="C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS", 
-   #layer="latest_smoke_display")  ## modified path
 
 # Note 2017-12-29: Decided not to cap county population-wted pm, but I will need
 # to reconcile cap of grid values polygon with this
 
 # read in saved R dates ----
-load("./data/date_label.RData") # original
-date_labels[1] <- paste(date_labels[1], "(today)") # original
-date_labels[2] <- paste(date_labels[2], "(tomorrow)") # original
-#date_labels <- c('today', 'tomorrow') # changed in local
+load("./data/date_label.RData")
+date_labels[1] <- paste(date_labels[1], "(today)")
+date_labels[2] <- paste(date_labels[2], "(tomorrow)")
 
 # create date names list to use with the radio button
 date_list <- list("layer_1", "layer_2")
@@ -99,12 +94,10 @@ names(date_list) <- date_labels
 
 # read in fire_locations ----
 load(here::here("Smoke_Predictor/data/", "fire_locations.RData"))
-#load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 
 # read when the HMS smoke plumes were updated. This creates the updated_date value, which is used later.
 # When testing this app, just set updated_date <-  [today's date] in format "YYYY-MM-DD"
 load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
-#load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData") # changed in local
 
 #------------------------------------------#
 #--------SETUP SHINY DASHBOARD UI----------#
