@@ -109,7 +109,7 @@ load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/fire_locations.RData")
 # When testing this app, just set updated_date <-  [today's date] in format "YYYY-MM-DD"
 #load(here::here("Smoke_Predictor/data/HMS/", "plume_update_date.Rdata"))
 load("C:/Users/apddsouth/Documents/Smoke_Predictor/data/HMS/plume_update_date.RData")
-updated_date <- "2019-08-13" ## REMOVE THIS LATER
+updated_date <- Sys.Date() ## REMOVE THIS LATER
 
 #------------------------------------------#
 #--------SETUP SHINY DASHBOARD UI----------#
